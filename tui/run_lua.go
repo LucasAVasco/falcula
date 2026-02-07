@@ -127,7 +127,7 @@ func (t *Tui) executeLuaFile(args []string) error {
 	L.SetGlobal("arg", argTable)
 
 	// Gets the main file path
-	mainFiles := []string{"falcula.lua", "falcula/init.lua", ".falcula.lua", ".falcula/init.lua"}
+	mainFiles := []string{"falcula.lua", "falcfg/init.lua", ".falcula.lua", ".falcfg/init.lua"}
 	mainFilePath := ""
 	for _, mainFile := range mainFiles {
 		if _, err := os.Stat(mainFile); err == nil {
