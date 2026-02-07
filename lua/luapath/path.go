@@ -44,6 +44,10 @@ func GetCurrentLuaFile(L *lua.LState) (string, error) {
 
 	// Source file
 	file := strings.TrimPrefix(stack_source, "@")
+	file, err := filepath.Abs(file)
+	if err != nil {
+		return "", fmt.Errorf("Failed to get absolute path of '%s': %w", file, err)
+	}
 	file = filepath.Clean(file)
 
 	return file, nil
