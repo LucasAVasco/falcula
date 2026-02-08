@@ -3,6 +3,7 @@ package process
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"sync"
@@ -31,6 +32,7 @@ type Options struct {
 	Wait        bool           // The `New` command will wait for the process to end
 	ManualStart bool           // Does not start the process automatically
 	OnExit      OnExitCallback // Callback called when the process ends
+	Env         []string       // Environment variables to add (or override) in the process. Use the format `ENVIRONMENT_NAME=value`
 
 	Multiplexer *multiplexer.Multiplexer // Multiplexer used for logging
 	Name        string                   // Name of the process used for logging
@@ -58,18 +60,8 @@ func New(opts *Options, command string, args ...string) (*Process, error) {
 		onExit: opts.OnExit,
 	}
 
-	// Command
-	if opts.Shell {
-		if len(args) > 0 {
-			command = command + " " + strings.Join(args, " ")
-		}
-		shellBaseCommand := getShellBaseCommand()
-		cmdName := shellBaseCommand[0]
-		cmdArgs := append(shellBaseCommand[1:], command)
-		p.cmd = exec.Command(cmdName, cmdArgs...)
-	} else {
-		p.cmd = exec.Command(command, args...)
-	}
+	// Environment variables
+	p.cmd.Env = append(os.Environ(), opts.Env...)
 
 	// Ensures a color exists
 	color := opts.Color
