@@ -34,30 +34,30 @@ func (p *Provider) AddImages(images []string) {
 
 func (p *Provider) NewBuildService(onlyBuild bool) *BuildService {
 	return &BuildService{
+		Service:   p.NewService("build"),
 		provider:  p,
-		name:      p.Name + ".build",
 		onlyBuild: onlyBuild,
 	}
 }
 
 func (p *Provider) NewUpService() iface.Service {
 	return &UpService{
+		Service:  p.NewService("up"),
 		provider: p,
-		name:     p.Name + ".up",
 	}
 }
 
 func (p *Provider) NewDownService() iface.Service {
 	return &DownService{
+		Service:  p.NewService("down"),
 		provider: p,
-		name:     p.Name + ".down",
 	}
 }
 
 func (p *Provider) NewPushService(repositories []string) iface.Service {
 	return &PushService{
+		Service:      p.NewService("push"),
 		provider:     p,
-		name:         p.Name + ".push",
 		images:       p.images,
 		repositories: repositories,
 	}

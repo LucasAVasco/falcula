@@ -5,30 +5,22 @@ import (
 
 	"github.com/LucasAVasco/falcula/process"
 	"github.com/LucasAVasco/falcula/provider/adapter"
+	"github.com/LucasAVasco/falcula/provider/base"
 	"github.com/LucasAVasco/falcula/provider/dockercompose/cmd"
 	"github.com/LucasAVasco/falcula/service/iface"
 )
 
 // PushService is a service that push docker-compose images to a registry
 type PushService struct {
+	*base.Service
 	provider     *Provider
-	name         string
 	images       []string
 	repositories []string
 }
 
-func (s *PushService) GetName() string {
-	return s.name
-}
-
 func (s *PushService) Prepare(callback iface.OnExitCallback) (iface.Step, error) {
-	procOpts := process.Options{
-		Multiplexer: s.provider.Multiplexer,
-		Name:        s.name,
-		Wait:        true,
-		Color:       s.provider.Color,
-		OnExit:      func(info *process.ExitInfo) { callback(info, nil) },
-	}
+	procOpts := s.NewProcessOptions()
+	procOpts.OnExit = func(info *process.ExitInfo) { callback(info, nil) }
 
 	// Does not need to build if there are no images
 	if len(s.images) == 0 {
@@ -36,7 +28,7 @@ func (s *PushService) Prepare(callback iface.OnExitCallback) (iface.Step, error)
 	}
 
 	// Builds the images
-	proc, err := cmd.Build(&procOpts, s.provider.composeFile)
+	proc, err := cmd.Build(procOpts, s.provider.composeFile)
 	if err != nil {
 		return nil, fmt.Errorf("error running 'Build' command: %w", err)
 	}
@@ -46,17 +38,13 @@ func (s *PushService) Prepare(callback iface.OnExitCallback) (iface.Step, error)
 
 func (s *PushService) Start(callback iface.OnExitCallback) (iface.Step, error) {
 	// Tags the images to push them to the repositories
-	procOpts := process.Options{
-		Multiplexer: s.provider.Multiplexer,
-		Name:        s.name,
-		Wait:        true, // Tag a image is a fast operation
-		Color:       s.provider.Color,
-	}
+	procOpts := s.NewProcessOptions()
+	procOpts.Wait = true // Tag a image is a fast operation
 
 	// Tags the images
 	for _, repository := range s.repositories {
 		for _, image := range s.images {
-			proc, err := cmd.Tag(&procOpts, image, repository+"/"+image)
+			proc, err := cmd.Tag(procOpts, image, repository+"/"+image)
 			if err != nil {
 				return nil, fmt.Errorf("error running 'tag' command: %w", err)
 			}
@@ -69,17 +57,12 @@ func (s *PushService) Start(callback iface.OnExitCallback) (iface.Step, error) {
 	}
 
 	// Pushes the images to the repositories
-	procOpts = process.Options{
-		Multiplexer: s.provider.Multiplexer,
-		Name:        s.name,
-		Wait:        false,
-		Color:       s.provider.Color,
-	}
+	procOpts.Wait = false // Push a image is a slow operation
 
 	procList := make([]*process.Process, 0)
 	for _, repository := range s.repositories {
 		for _, image := range s.images {
-			proc, err := cmd.Push(&procOpts, image, repository)
+			proc, err := cmd.Push(procOpts, image, repository)
 			if err != nil {
 				return nil, fmt.Errorf("error running 'Push' command: %w", err)
 			}
