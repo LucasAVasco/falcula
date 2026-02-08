@@ -1,4 +1,4 @@
-// Package base implements a base provider.
+// Package base implements a base provider and service.
 package base
 
 import (
@@ -15,7 +15,7 @@ type Provider struct {
 	Color       *color.Color
 }
 
-func New(multi *multiplexer.Multiplexer, name string) *Provider {
+func NewProvider(multi *multiplexer.Multiplexer, name string) *Provider {
 	return &Provider{
 		Multiplexer: multi,
 		Name:        name,
@@ -25,4 +25,18 @@ func New(multi *multiplexer.Multiplexer, name string) *Provider {
 
 func (p *Provider) GetName() string {
 	return p.Name
+}
+
+// NewService creates a new service. Its name is automatically prefixed with the provider name. If empty, the provider name is used
+func (p *Provider) NewService(name string) *Service {
+	if name == "" {
+		name = p.Name
+	} else {
+		name = p.Name + "." + name
+	}
+
+	return &Service{
+		Provider: p,
+		Name:     name,
+	}
 }

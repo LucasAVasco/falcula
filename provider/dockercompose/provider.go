@@ -18,7 +18,7 @@ type Provider struct {
 
 func New(multi *multiplexer.Multiplexer, name string, composeFile string) *Provider {
 	return &Provider{
-		Provider:    base.New(multi, name),
+		Provider:    base.NewProvider(multi, name),
 		composeFile: filepath.Clean(composeFile),
 		images:      []string{},
 	}

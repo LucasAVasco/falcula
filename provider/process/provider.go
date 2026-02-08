@@ -22,7 +22,7 @@ type Provider struct {
 // disable a step by setting the command to nil)
 func New(multi *multiplexer.Multiplexer, name string, prepareCmd *Command, mainCmd *Command) *Provider {
 	return &Provider{
-		Provider:   base.New(multi, name),
+		Provider:   base.NewProvider(multi, name),
 		prepareCmd: prepareCmd,
 		mainCmd:    mainCmd,
 	}
