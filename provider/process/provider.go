@@ -34,8 +34,7 @@ func (p *Provider) GetName() string {
 
 func (p *Provider) NewService() *Service {
 	return &Service{
-		provider:   p,
-		name:       p.Name,
+		Service:    p.Provider.NewService(""),
 		prepareCmd: p.prepareCmd,
 		mainCmd:    p.mainCmd,
 	}
