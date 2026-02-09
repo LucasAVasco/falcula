@@ -157,7 +157,7 @@ func (s *BuildService) Start(callback iface.OnExitCallback) (iface.Step, error) 
 	procList := make([]*process.Process, 0, 2)
 
 	if !s.opts.NoPull {
-		proc, err := cmd.Pull(procOpts, s.Info.GetComposeFilePath())
+		proc, err := cmd.Pull(procOpts, s.Info.GetComposeFilePath(), "--ignore-buildable")
 		if err != nil {
 			return nil, fmt.Errorf("error running 'Pull' command: %w", err)
 		}

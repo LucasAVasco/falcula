@@ -22,9 +22,8 @@ func genericDockerCommand(opts *process.Options, args ...string) (*process.Proce
 	return process.New(opts, "docker", args...)
 }
 
-// Pull pulls images referenced in the compose file. Does not pull buildable images
-func Pull(opts *process.Options, composeFile string) (*process.Process, error) {
-	return genericDockerComposeCommand(opts, composeFile, "pull", "--ignore-buildable")
+func Pull(opts *process.Options, composeFile string, args ...string) (*process.Process, error) {
+	return genericDockerComposeCommand(opts, composeFile, "pull", args...)
 }
 
 func Build(opts *process.Options, composeFile string, args ...string) (*process.Process, error) {
