@@ -60,7 +60,6 @@ func (p *Provider) NewBuildService(opts *BuildServiceOpts) *BuildService {
 func (p *Provider) NewUpService(platform string) iface.Service {
 	return &UpService{
 		Service:  p.NewService("up"),
-		provider: p,
 		platform: platform,
 	}
 }

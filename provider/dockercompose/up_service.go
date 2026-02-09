@@ -12,7 +12,6 @@ import (
 // UpService is a service that runs the docker-compose up command
 type UpService struct {
 	*Service
-	provider *Provider
 	platform string
 }
 
