@@ -107,15 +107,24 @@ func (m *Manager) GetServices() []*enhanced.EnhancedService {
 }
 
 // routineForEachService executes a callback for each service in a goroutine and returns a waiter with the results of the callbacks
-func (m *Manager) routineForEachService(callback func(svc *enhanced.EnhancedService) error) *waiter.Waiter {
+func (m *Manager) routineForEachService(callback func(svc *enhanced.EnhancedService) (*iface.ExitInfo, error)) *waiter.Waiter {
 	waiter := waiter.Waiter{}
 
 	for _, svc := range m.services {
 		waiter.Go(func() {
-			err := callback(svc)
+			exitCode, err := callback(svc)
+
+			// Extends the error message
 			if err != nil {
 				err = fmt.Errorf("error processing enhanced service '%s': %w", svc.GetName(), err)
+			} else if exitCode != nil {
+				if exitCode.HasError() {
+					err = fmt.Errorf("exit code of enhanced service '%s' has an error: %w", svc.GetName(), exitCode.WrapError())
+				}
+			}
 
+			// Add the error to the waiter
+			if err != nil {
 				m.OnError(m, err)
 				waiter.AddError(err)
 			}
@@ -129,14 +138,14 @@ func (m *Manager) routineForEachService(callback func(svc *enhanced.EnhancedServ
 func (m *Manager) StartPrepare(onServicePrepared enhanced.ExitStepCallback) *waiter.Waiter {
 	onServicePrepared = applyDefaultExitProcessCallback(onServicePrepared)
 
-	return m.routineForEachService(func(svc *enhanced.EnhancedService) error {
+	return m.routineForEachService(func(svc *enhanced.EnhancedService) (*iface.ExitInfo, error) {
 		err := svc.StartPrepare()
 		if err != nil {
 			err = fmt.Errorf("error preparing enhanced service '%s': %w", svc.GetName(), err)
 		}
 
 		onServicePrepared(svc, nil, err)
-		return err
+		return nil, err
 	})
 }
 
@@ -144,14 +153,14 @@ func (m *Manager) StartPrepare(onServicePrepared enhanced.ExitStepCallback) *wai
 func (m *Manager) WaitPrepare(onServicePrepared enhanced.ExitStepCallback) error {
 	onServicePrepared = applyDefaultExitProcessCallback(onServicePrepared)
 
-	return m.routineForEachService(func(svc *enhanced.EnhancedService) error {
+	return m.routineForEachService(func(svc *enhanced.EnhancedService) (*iface.ExitInfo, error) {
 		exitInfo, err := svc.WaitPrepare()
 		if err != nil {
 			err = fmt.Errorf("error waiting enhanced service '%s' to prepare: %w", svc.GetName(), err)
 		}
 
 		onServicePrepared(svc, exitInfo, err)
-		return err
+		return exitInfo, err
 	}).Wait()
 }
 
@@ -159,14 +168,14 @@ func (m *Manager) WaitPrepare(onServicePrepared enhanced.ExitStepCallback) error
 func (m *Manager) Prepare(onServicePrepared enhanced.ExitStepCallback) *waiter.Waiter {
 	onServicePrepared = applyDefaultExitProcessCallback(onServicePrepared)
 
-	return m.routineForEachService(func(svc *enhanced.EnhancedService) error {
+	return m.routineForEachService(func(svc *enhanced.EnhancedService) (*iface.ExitInfo, error) {
 		exitInfo, err := svc.Prepare()
 		if err != nil {
 			err = fmt.Errorf("error preparing enhanced service '%s': %w", svc.GetName(), err)
 		}
 
 		onServicePrepared(svc, exitInfo, err)
-		return err
+		return exitInfo, err
 	})
 }
 
@@ -174,14 +183,14 @@ func (m *Manager) Prepare(onServicePrepared enhanced.ExitStepCallback) *waiter.W
 func (m *Manager) AbortPrepare(force bool, onServicePrepared enhanced.ExitStepCallback) *waiter.Waiter {
 	onServicePrepared = applyDefaultExitProcessCallback(onServicePrepared)
 
-	return m.routineForEachService(func(svc *enhanced.EnhancedService) error {
+	return m.routineForEachService(func(svc *enhanced.EnhancedService) (*iface.ExitInfo, error) {
 		exitInfo, err := svc.AbortPrepare(force)
 		if err != nil {
 			err = fmt.Errorf("error aborting enhanced service '%s': %w", svc.GetName(), err)
 		}
 
 		onServicePrepared(svc, exitInfo, err)
-		return err
+		return exitInfo, err
 	})
 }
 
@@ -189,22 +198,22 @@ func (m *Manager) AbortPrepare(force bool, onServicePrepared enhanced.ExitStepCa
 func (m *Manager) Start(callback enhanced.ExitStepCallback) *waiter.Waiter {
 	callback = applyDefaultExitProcessCallback(callback)
 
-	return m.routineForEachService(func(svc *enhanced.EnhancedService) error {
+	return m.routineForEachService(func(svc *enhanced.EnhancedService) (*iface.ExitInfo, error) {
 		err := svc.Start()
 		if err != nil {
 			err = fmt.Errorf("error starting enhanced service '%s': %w", svc.GetName(), err)
 			callback(svc, nil, err)
-			return err
+			return nil, err
 		}
 
 		exitInfo, err := svc.Wait()
 		if err != nil {
 			err = fmt.Errorf("error waiting enhanced service '%s': %w", svc.GetName(), err)
 			callback(svc, exitInfo, err)
-			return err
+			return nil, err
 		}
 
-		return nil
+		return exitInfo, nil
 	})
 }
 
@@ -212,14 +221,14 @@ func (m *Manager) Start(callback enhanced.ExitStepCallback) *waiter.Waiter {
 func (m *Manager) Wait(onServiceEnded enhanced.ExitStepCallback) error {
 	onServiceEnded = applyDefaultExitProcessCallback(onServiceEnded)
 
-	err := m.routineForEachService(func(svc *enhanced.EnhancedService) error {
+	err := m.routineForEachService(func(svc *enhanced.EnhancedService) (*iface.ExitInfo, error) {
 		exitInfo, err := svc.Wait()
 		if err != nil {
 			err = fmt.Errorf("error waiting enhanced service '%s' to end: %w", svc.GetName(), err)
 		}
 
 		onServiceEnded(svc, exitInfo, err)
-		return err
+		return exitInfo, err
 	}).Wait()
 
 	if err != nil {
@@ -248,14 +257,14 @@ func (m *Manager) Run(onServiceEnded enhanced.ExitStepCallback) error {
 func (m *Manager) RunEach(onServiceEnded enhanced.ExitStepCallback) *waiter.Waiter {
 	onServiceEnded = applyDefaultExitProcessCallback(onServiceEnded)
 
-	return m.routineForEachService(func(svc *enhanced.EnhancedService) error {
+	return m.routineForEachService(func(svc *enhanced.EnhancedService) (*iface.ExitInfo, error) {
 		exitInfo, err := svc.Run()
 		if err != nil {
 			err = fmt.Errorf("error running enhanced service '%s': %w", svc.GetName(), err)
 		}
 
 		onServiceEnded(svc, exitInfo, err)
-		return err
+		return exitInfo, err
 	})
 }
 
@@ -285,7 +294,7 @@ func (m *Manager) RunSerial(onServicePrepared enhanced.ExitStepCallback, onServi
 func (m *Manager) Stop(force bool, onServiceEnded enhanced.ExitStepCallback) *waiter.Waiter {
 	onServiceEnded = applyDefaultExitProcessCallback(onServiceEnded)
 
-	return m.routineForEachService(func(svc *enhanced.EnhancedService) error {
+	return m.routineForEachService(func(svc *enhanced.EnhancedService) (*iface.ExitInfo, error) {
 		exitInfo, err := svc.Stop(force)
 		if err != nil {
 			if errors.Is(err, enhanced.ErrInvalidStatus) {
@@ -296,7 +305,7 @@ func (m *Manager) Stop(force bool, onServiceEnded enhanced.ExitStepCallback) *wa
 		}
 
 		onServiceEnded(svc, exitInfo, err)
-		return err
+		return exitInfo, err
 	})
 }
 
@@ -305,7 +314,7 @@ func (m *Manager) Stop(force bool, onServiceEnded enhanced.ExitStepCallback) *wa
 func (m *Manager) AbortPrepareOrStop(force bool, onServiceEnded enhanced.ExitStepCallback) *waiter.Waiter {
 	onServiceEnded = applyDefaultExitProcessCallback(onServiceEnded)
 
-	return m.routineForEachService(func(svc *enhanced.EnhancedService) error {
+	return m.routineForEachService(func(svc *enhanced.EnhancedService) (*iface.ExitInfo, error) {
 		exitInfo, err := svc.AbortPrepareOrStop(force)
 		if err != nil {
 			if errors.Is(err, enhanced.ErrInvalidStatus) {
@@ -316,7 +325,7 @@ func (m *Manager) AbortPrepareOrStop(force bool, onServiceEnded enhanced.ExitSte
 		}
 
 		onServiceEnded(svc, exitInfo, err)
-		return err
+		return exitInfo, err
 	})
 }
 
@@ -324,14 +333,14 @@ func (m *Manager) AbortPrepareOrStop(force bool, onServiceEnded enhanced.ExitSte
 func (m *Manager) Reset(force bool, onServiceEnded enhanced.ExitStepCallback) *waiter.Waiter {
 	onServiceEnded = applyDefaultExitProcessCallback(onServiceEnded)
 
-	return m.routineForEachService(func(svc *enhanced.EnhancedService) error {
+	return m.routineForEachService(func(svc *enhanced.EnhancedService) (*iface.ExitInfo, error) {
 		exitInfo, err := svc.Reset(force)
 		if err != nil {
 			err = fmt.Errorf("error resetting enhanced service '%s': %w", svc.GetName(), err)
 		}
 
 		onServiceEnded(svc, exitInfo, err)
-		return err
+		return exitInfo, err
 	})
 }
 
@@ -362,13 +371,13 @@ func (m *Manager) Restart(force bool, onServiceEnded enhanced.ExitStepCallback) 
 func (m *Manager) RestartEach(force bool, onServiceEnded enhanced.ExitStepCallback) *waiter.Waiter {
 	onServiceEnded = applyDefaultExitProcessCallback(onServiceEnded)
 
-	return m.routineForEachService(func(svc *enhanced.EnhancedService) error {
+	return m.routineForEachService(func(svc *enhanced.EnhancedService) (*iface.ExitInfo, error) {
 		exitInfo, err := svc.Restart(force)
 		if err != nil {
 			err = fmt.Errorf("error resetting enhanced service '%s': %w", svc.GetName(), err)
 		}
 
 		onServiceEnded(svc, exitInfo, err)
-		return err
+		return exitInfo, err
 	})
 }
