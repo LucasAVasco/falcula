@@ -30,20 +30,20 @@ func Build(opts *process.Options, composeFile string, args ...string) (*process.
 	return genericDockerComposeCommand(opts, composeFile, "build", args...)
 }
 
-func Up(opts *process.Options, composeFile string) (*process.Process, error) {
-	return genericDockerComposeCommand(opts, composeFile, "up")
+func Up(opts *process.Options, composeFile string, args ...string) (*process.Process, error) {
+	return genericDockerComposeCommand(opts, composeFile, "up", args...)
 }
 
-func Stop(opts *process.Options, composeFile string) (*process.Process, error) {
-	return genericDockerComposeCommand(opts, composeFile, "stop")
+func Stop(opts *process.Options, composeFile string, args ...string) (*process.Process, error) {
+	return genericDockerComposeCommand(opts, composeFile, "stop", args...)
 }
 
-func Down(opts *process.Options, composeFile string) (*process.Process, error) {
-	return genericDockerComposeCommand(opts, composeFile, "down")
+func Down(opts *process.Options, composeFile string, args ...string) (*process.Process, error) {
+	return genericDockerComposeCommand(opts, composeFile, "down", args...)
 }
 
-func Kill(opts *process.Options, composeFile string) (*process.Process, error) {
-	return genericDockerComposeCommand(opts, composeFile, "kill")
+func Kill(opts *process.Options, composeFile string, args ...string) (*process.Process, error) {
+	return genericDockerComposeCommand(opts, composeFile, "kill", args...)
 }
 
 func Tag(opts *process.Options, image string, tag string) (*process.Process, error) {
