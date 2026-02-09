@@ -18,6 +18,7 @@ type Service struct {
 
 func (s *Service) Prepare(callback iface.OnExitCallback) (iface.Step, error) {
 	if s.prepareCmd == nil {
+		callback(&iface.ExitInfo{}, nil)
 		return nil, nil
 	}
 
@@ -35,6 +36,7 @@ func (s *Service) Prepare(callback iface.OnExitCallback) (iface.Step, error) {
 
 func (s *Service) Start(callback iface.OnExitCallback) (iface.Step, error) {
 	if s.mainCmd == nil {
+		callback(&iface.ExitInfo{}, nil)
 		return nil, nil
 	}
 
