@@ -56,6 +56,7 @@ func (t *Tui) newApp() error {
 	t.argsView.OnExit = t.focusMainPage
 	t.argsView.OnSelected = func(args []string) {
 		t.createLuaRoutine(args)
+		t.focusMainPage()
 	}
 	t.pages.AddPage("arguments", t.argsView.GetPrimitive(), true, false)
 
