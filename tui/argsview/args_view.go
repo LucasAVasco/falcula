@@ -105,6 +105,7 @@ func (a *ArgsView) SetCurrentArgs(args []string) {
 	}
 
 	a.currentArgsPreview.SetText("Current arguments: " + strings.Join(args, " "))
+	a.app.Draw()
 }
 
 // SetAvailableArgs sets the available command arguments in the list. The user can select one of them
@@ -120,6 +121,8 @@ func (a *ArgsView) SetAvailableArgs(argsList [][]string) {
 		cell := tview.NewTableCell(cellText).SetReference(arg)
 		a.availableArgsTable.SetCell(i, 0, cell)
 	}
+
+	a.app.Draw()
 }
 
 // FocusAvailableArgs focuses the available arguments list
