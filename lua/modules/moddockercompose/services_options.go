@@ -72,3 +72,89 @@ func parseBuildServiceOpts(_ *lua.LState, argument lua.LValue) (*dockercompose.B
 
 	return &opts, nil
 }
+
+// parsePushServiceOpts parses the push service options
+func parsePushServiceOpts(_ *lua.LState, argument lua.LValue) (*dockercompose.PushServiceOpts, error) {
+	if argument == lua.LNil {
+		return nil, nil
+	}
+
+	// Result
+	opts := dockercompose.PushServiceOpts{}
+
+	// Checks if the argument is a table
+	table, ok := argument.(*lua.LTable)
+	if !ok {
+		return nil, fmt.Errorf("the options list must be a table, got %T", argument)
+	}
+
+	// Parses the 'pushes' field
+	if pushes := table.RawGetString("pushes"); pushes.Type() == lua.LTTable {
+		pushes := pushes.(*lua.LTable)
+
+		opts.Pushes = make([]*dockercompose.PushInfo, 0)
+
+		err := luatable.ForEach(pushes, func(key, value lua.LValue) error {
+			options, ok := value.(*lua.LTable)
+			if !ok {
+				return fmt.Errorf("the push information must be a table, got %T", value)
+			}
+
+			// 'pushes[n]'
+			pushInfo := &dockercompose.PushInfo{}
+
+			// 'pushes[n].services'
+			services := options.RawGetString("services")
+			if services.Type() == lua.LTTable {
+				pushInfo.Services = luatable.GetStringsFromLuaTable(services.(*lua.LTable))
+			} else if services == lua.LNil {
+				// Optional value
+			} else {
+				return fmt.Errorf("services list must be a table of strings, got %T", services)
+			}
+
+			// 'pushes[n].images'
+			images := options.RawGetString("images")
+			if images.Type() == lua.LTTable {
+				pushInfo.Images = luatable.GetStringsFromLuaTable(images.(*lua.LTable))
+			} else if images == lua.LNil {
+				// Optional value
+			} else {
+				return fmt.Errorf("images list must be a table of strings, got %T", images)
+			}
+
+			// 'pushes[n].platforms'
+			platforms := options.RawGetString("platforms")
+			if platforms.Type() == lua.LTTable {
+				pushInfo.Platforms = luatable.GetStringsFromLuaTable(platforms.(*lua.LTable))
+			} else if services == lua.LNil {
+				// Optional value
+			} else {
+				return fmt.Errorf("platforms list must be a table of strings, got %T", platforms)
+			}
+
+			// 'pushes[n].registries'
+			repositories := options.RawGetString("registries")
+			if repositories.Type() == lua.LTTable {
+				pushInfo.Registries = luatable.GetStringsFromLuaTable(repositories.(*lua.LTable))
+			} else {
+				return fmt.Errorf("repositories list must be a table of strings, got %T", repositories)
+			}
+
+			// pushes[n].tag'
+			tag := options.RawGetString("tag")
+			if tag.Type() == lua.LTString {
+				pushInfo.Tag = tag.(lua.LString).String()
+			}
+
+			opts.Pushes = append(opts.Pushes, pushInfo)
+
+			return nil
+		})
+		if err != nil {
+			return nil, fmt.Errorf("error iterating through the list of push information: %w", err)
+		}
+	}
+
+	return &opts, nil
+}

@@ -118,9 +118,11 @@ var methods = map[string]lua.LGFunction{
 
 	"new_push_service": func(L *lua.LState) int {
 		provider := getProvider(L)
-		repositories := L.ToTable(2)
-		repoList := luatable.GetStringsFromLuaTable(repositories)
-		L.Push(luadata.NewUserData(L, provider.NewPushService(repoList)))
+		opts, err := parsePushServiceOpts(L, L.Get(2))
+		if err != nil {
+			return luaerror.Push(L, 1, fmt.Errorf("error parsing push options: %w", err))
+		}
+		L.Push(luadata.NewUserData(L, provider.NewPushService(opts)))
 		return 1
 	},
 }

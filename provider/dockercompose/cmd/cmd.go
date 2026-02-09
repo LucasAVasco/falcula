@@ -51,6 +51,28 @@ func Tag(opts *process.Options, image string, tag string) (*process.Process, err
 	return genericDockerCommand(opts, "tag", image, tag)
 }
 
-func Push(opts *process.Options, image string, repository string) (*process.Process, error) {
-	return genericDockerCommand(opts, "push", repository+"/"+image)
+// Push pushes images referenced in the compose file to a registry. The registry URL is automatically prefixed to the image, unless it is
+// empty
+func Push(opts *process.Options, image string, registry string) (*process.Process, error) {
+	if registry != "" {
+		image = registry + "/" + image
+	}
+	return genericDockerCommand(opts, "push", image)
+}
+
+// ManifestCreate creates a manifest from a list of images. The registry URL is automatically prefixed to the image, unless it is empty
+func ManifestCreate(opts *process.Options, manifest string, registry string, images ...string) (*process.Process, error) {
+	if registry != "" {
+		manifest = registry + "/" + manifest
+	}
+	cmdArgs := []string{"manifest", "create", manifest}
+
+	for _, image := range images {
+		if registry != "" {
+			image = registry + "/" + image
+		}
+		cmdArgs = append(cmdArgs, "--amend", image)
+	}
+
+	return genericDockerCommand(opts, cmdArgs...)
 }

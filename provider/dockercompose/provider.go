@@ -72,9 +72,10 @@ func (p *Provider) NewDownService() iface.Service {
 	}
 }
 
-func (p *Provider) NewPushService(repositories []string) iface.Service {
+// NewPushService returns a new push service. Opts must not be nil
+func (p *Provider) NewPushService(opts *PushServiceOpts) iface.Service {
 	return &PushService{
-		Service:      p.NewService("push"),
-		repositories: repositories,
+		Service: p.NewService("push"),
+		opts:    opts,
 	}
 }
