@@ -2,40 +2,40 @@
 package dockercompose
 
 import (
-	"path/filepath"
-
 	"github.com/LucasAVasco/falcula/multiplexer"
 	"github.com/LucasAVasco/falcula/provider/base"
+	"github.com/LucasAVasco/falcula/provider/dockercompose/info"
 	"github.com/LucasAVasco/falcula/service/iface"
 )
 
 // Provider is a docker-compose service provider (generate docker-compose services)
 type Provider struct {
 	*base.Provider
-	composeFile string
-	images      []string
+	info *info.DockerComposeInfo
 }
 
 func New(multi *multiplexer.Multiplexer, name string, composeFile string) *Provider {
 	return &Provider{
-		Provider:    base.NewProvider(multi, name),
-		composeFile: filepath.Clean(composeFile),
-		images:      []string{},
+		Provider: base.NewProvider(multi, name),
+		info:     info.NewComposeInfo(composeFile),
 	}
 }
 
-func (p *Provider) AddImage(image string) {
-	p.images = append(p.images, image)
+func (p *Provider) NewService(name string) *Service {
+	return NewService(p.Provider.NewService(name), p.info)
 }
 
-func (p *Provider) AddImages(images []string) {
-	p.images = append(p.images, images...)
+func (p *Provider) AddDefaultPushImage(image string) {
+	p.info.AddDefaultPushImage(image)
+}
+
+func (p *Provider) AddDefaultPushImages(images []string) {
+	p.info.AddDefaultPushImages(images)
 }
 
 func (p *Provider) NewBuildService(onlyBuild bool) *BuildService {
 	return &BuildService{
 		Service:   p.NewService("build"),
-		provider:  p,
 		onlyBuild: onlyBuild,
 	}
 }
@@ -57,8 +57,6 @@ func (p *Provider) NewDownService() iface.Service {
 func (p *Provider) NewPushService(repositories []string) iface.Service {
 	return &PushService{
 		Service:      p.NewService("push"),
-		provider:     p,
-		images:       p.images,
 		repositories: repositories,
 	}
 }

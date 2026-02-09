@@ -44,7 +44,7 @@ func (l *Loader) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 				images := opts.RawGet(lua.LString("push_images"))
 				if images != lua.LNil {
 					images := luatable.GetStringsFromLuaTable(images.(*lua.LTable))
-					provider.AddImages(images)
+					provider.AddDefaultPushImages(images)
 				}
 			}
 
@@ -81,14 +81,14 @@ var methods = map[string]lua.LGFunction{
 	"add_image": func(L *lua.LState) int {
 		provider := getProvider(L)
 		image := L.ToString(2)
-		provider.AddImage(image)
+		provider.AddDefaultPushImage(image)
 		return 0
 	},
 
 	"add_push_images": func(L *lua.LState) int {
 		provider := getProvider(L)
 		images := luatable.GetStringsFromLuaTable(L.ToTable(2))
-		provider.AddImages(images)
+		provider.AddDefaultPushImages(images)
 		return 0
 	},
 

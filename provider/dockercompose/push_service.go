@@ -5,16 +5,13 @@ import (
 
 	"github.com/LucasAVasco/falcula/process"
 	"github.com/LucasAVasco/falcula/provider/adapter"
-	"github.com/LucasAVasco/falcula/provider/base"
 	"github.com/LucasAVasco/falcula/provider/dockercompose/cmd"
 	"github.com/LucasAVasco/falcula/service/iface"
 )
 
 // PushService is a service that push docker-compose images to a registry
 type PushService struct {
-	*base.Service
-	provider     *Provider
-	images       []string
+	*Service
 	repositories []string
 }
 
@@ -22,13 +19,16 @@ func (s *PushService) Prepare(callback iface.OnExitCallback) (iface.Step, error)
 	procOpts := s.NewProcessOptions()
 	procOpts.OnExit = func(info *process.ExitInfo) { callback(info, nil) }
 
+	// Images to push
+	images := s.Info.GetDefaultPushImages()
+
 	// Does not need to build if there are no images
-	if len(s.images) == 0 {
+	if len(images) == 0 {
 		return nil, nil
 	}
 
 	// Builds the images
-	proc, err := cmd.Build(procOpts, s.provider.composeFile)
+	proc, err := cmd.Build(procOpts, s.Info.GetComposeFilePath())
 	if err != nil {
 		return nil, fmt.Errorf("error running 'Build' command: %w", err)
 	}
@@ -41,9 +41,12 @@ func (s *PushService) Start(callback iface.OnExitCallback) (iface.Step, error) {
 	procOpts := s.NewProcessOptions()
 	procOpts.Wait = true // Tag a image is a fast operation
 
+	// Images to push
+	images := s.Info.GetDefaultPushImages()
+
 	// Tags the images
 	for _, repository := range s.repositories {
-		for _, image := range s.images {
+		for _, image := range images {
 			proc, err := cmd.Tag(procOpts, image, repository+"/"+image)
 			if err != nil {
 				return nil, fmt.Errorf("error running 'tag' command: %w", err)
@@ -61,7 +64,7 @@ func (s *PushService) Start(callback iface.OnExitCallback) (iface.Step, error) {
 
 	procList := make([]*process.Process, 0)
 	for _, repository := range s.repositories {
-		for _, image := range s.images {
+		for _, image := range images {
 			proc, err := cmd.Push(procOpts, image, repository)
 			if err != nil {
 				return nil, fmt.Errorf("error running 'Push' command: %w", err)
