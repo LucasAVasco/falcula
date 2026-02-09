@@ -53,7 +53,7 @@ func SerialProcessesToStep(processes []*process.Process, onEnd iface.OnExitCallb
 
 func (s *SerialProcessesStep) Wait() (*iface.ExitInfo, error) {
 	s.waitGroup.Wait()
-	return s.exitInfo, nil
+	return s.exitInfo, s.startError
 }
 
 func (s *SerialProcessesStep) Abort(force bool) (*iface.ExitInfo, error) {
