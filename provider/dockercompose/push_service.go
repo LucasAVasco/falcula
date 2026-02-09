@@ -16,27 +16,8 @@ type PushService struct {
 }
 
 func (s *PushService) Prepare(callback iface.OnExitCallback) (iface.Step, error) {
-	procOpts := s.NewProcessOptions()
-	procOpts.OnExit = func(info *process.ExitInfo) { callback(info, nil) }
-
-	// Images to push
-	images, err := s.Info.GetDefaultPushImages()
-	if err != nil {
-		return nil, fmt.Errorf("error getting default push images: %w", err)
-	}
-
-	// Does not need to build if there are no images
-	if len(images) == 0 {
-		return nil, nil
-	}
-
-	// Builds the images
-	proc, err := cmd.Build(procOpts, s.Info.GetComposeFilePath())
-	if err != nil {
-		return nil, fmt.Errorf("error running 'Build' command: %w", err)
-	}
-
-	return adapter.ProcessToStep(proc), err
+	callback(&iface.ExitInfo{}, nil)
+	return nil, nil
 }
 
 func (s *PushService) Start(callback iface.OnExitCallback) (iface.Step, error) {
