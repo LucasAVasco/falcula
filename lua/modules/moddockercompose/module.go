@@ -105,7 +105,8 @@ var methods = map[string]lua.LGFunction{
 
 	"new_up_service": func(L *lua.LState) int {
 		provider := getProvider(L)
-		L.Push(luadata.NewUserData(L, provider.NewUpService()))
+		platform := L.OptString(2, "")
+		L.Push(luadata.NewUserData(L, provider.NewUpService(platform)))
 		return 1
 	},
 

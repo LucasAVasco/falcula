@@ -13,12 +13,13 @@ import (
 type UpService struct {
 	*Service
 	provider *Provider
+	platform string
 }
 
 func (s *UpService) Prepare(callback iface.OnExitCallback) (iface.Step, error) {
 	procOpts := s.NewProcessOptions()
 
-	// Pull and build processes
+	// Pull process
 	procs := make([]*process.Process, 0, 2)
 
 	proc, err := cmd.Pull(procOpts, s.Info.GetComposeFilePath())
@@ -26,6 +27,9 @@ func (s *UpService) Prepare(callback iface.OnExitCallback) (iface.Step, error) {
 		return nil, fmt.Errorf("error running 'Pull' command: %w", err)
 	}
 	procs = append(procs, proc)
+
+	// Build process
+	setDockerPlatformEnv(procOpts, s.platform)
 
 	proc, err = cmd.Build(procOpts, s.Info.GetComposeFilePath())
 	if err != nil {
@@ -39,6 +43,7 @@ func (s *UpService) Prepare(callback iface.OnExitCallback) (iface.Step, error) {
 func (s *UpService) Start(callback iface.OnExitCallback) (iface.Step, error) {
 	procOpts := s.NewProcessOptions()
 	procOpts.OnExit = func(info *process.ExitInfo) { callback(info, nil) }
+	setDockerPlatformEnv(procOpts, s.platform)
 
 	// Starts the process
 	proc, err := cmd.Up(procOpts, s.Info.GetComposeFilePath())
