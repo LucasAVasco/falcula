@@ -57,7 +57,7 @@ func New(app *tview.Application, logFilePath string, help *help.HelpWidget) *Mai
 	// Side bar
 	m.SideBar = sidebar.New(app, logFilePath)
 	m.SideBar.OnError = func(err error) {
-		m.DebugLogs.Append(err)
+		m.DebugLogs.Append(err, "\n")
 	}
 	mainFlex.AddItem(m.SideBar.GetPrimitive(), 0, 1, false)
 

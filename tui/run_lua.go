@@ -18,25 +18,25 @@ func (t *Tui) fillManagerCallbacks(modulesOpts *modules.AllModulesLoaderOptions)
 	modulesOpts.ManagerCallbacks.OnNewManager = func(man *manager.Manager) {
 		err := t.mainPage.SideBar.AddManager(man)
 		if err != nil {
-			t.mainPage.DebugLogs.Append(fmt.Errorf("error adding manager: %w", err))
+			t.mainPage.DebugLogs.Append(fmt.Errorf("error adding manager: %w", err), "\n")
 		}
 	}
 	modulesOpts.ManagerCallbacks.OnDeleteManager = func(man *manager.Manager) {
 		err := t.mainPage.SideBar.RemoveManager(man)
 		if err != nil {
-			t.mainPage.DebugLogs.Append(fmt.Errorf("error removing manager: %w", err))
+			t.mainPage.DebugLogs.Append(fmt.Errorf("error removing manager: %w", err), "\n")
 		}
 	}
 	modulesOpts.ManagerCallbacks.OnAddService = func(man *manager.Manager, svc *enhanced.EnhancedService) {
 		err := t.mainPage.SideBar.AddService(man, svc)
 		if err != nil {
-			t.mainPage.DebugLogs.Append(fmt.Errorf("error adding service: %w", err))
+			t.mainPage.DebugLogs.Append(fmt.Errorf("error adding service: %w", err), "\n")
 		}
 	}
 	modulesOpts.ManagerCallbacks.OnServiceStatusChanged = func(man *manager.Manager, svc *enhanced.EnhancedService) {
 		err := t.mainPage.SideBar.UpdateServiceStatus(man, svc)
 		if err != nil {
-			t.mainPage.DebugLogs.Append(fmt.Errorf("error updating service status: %w", err))
+			t.mainPage.DebugLogs.Append(fmt.Errorf("error updating service status: %w", err), "\n")
 		}
 	}
 
@@ -44,7 +44,7 @@ func (t *Tui) fillManagerCallbacks(modulesOpts *modules.AllModulesLoaderOptions)
 		t.mainPage.ServiceLogs.Append(message)
 	}
 	modulesOpts.ManagerCallbacks.OnDebugLog = func(message string) {
-		t.mainPage.DebugLogs.Append(message, "\n")
+		t.mainPage.DebugLogs.Append(message)
 	}
 }
 
@@ -101,7 +101,7 @@ func (t *Tui) executeLuaFile(args []string) error {
 			t.mainPage.DebugLogs.Append(msg, "\n")
 		},
 		OnError: func(err error) {
-			t.mainPage.DebugLogs.Append(err)
+			t.mainPage.DebugLogs.Append(err, "\n")
 		},
 	}
 
