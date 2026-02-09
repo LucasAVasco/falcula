@@ -27,8 +27,8 @@ func Pull(opts *process.Options, composeFile string) (*process.Process, error) {
 	return genericDockerComposeCommand(opts, composeFile, "pull", "--ignore-buildable")
 }
 
-func Build(opts *process.Options, composeFile string) (*process.Process, error) {
-	return genericDockerComposeCommand(opts, composeFile, "build")
+func Build(opts *process.Options, composeFile string, args ...string) (*process.Process, error) {
+	return genericDockerComposeCommand(opts, composeFile, "build", args...)
 }
 
 func Up(opts *process.Options, composeFile string) (*process.Process, error) {

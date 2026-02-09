@@ -6,6 +6,7 @@ import (
 
 	"github.com/LucasAVasco/falcula/lua/luaclass"
 	"github.com/LucasAVasco/falcula/lua/luadata"
+	"github.com/LucasAVasco/falcula/lua/luaerror"
 	"github.com/LucasAVasco/falcula/lua/luapath"
 	"github.com/LucasAVasco/falcula/lua/luatable"
 	"github.com/LucasAVasco/falcula/lua/modules/base"
@@ -94,8 +95,11 @@ var methods = map[string]lua.LGFunction{
 
 	"new_build_service": func(L *lua.LState) int {
 		provider := getProvider(L)
-		onlyBuild := L.OptBool(2, false)
-		L.Push(luadata.NewUserData(L, provider.NewBuildService(onlyBuild)))
+		opts, err := parseBuildServiceOpts(L, L.Get(2))
+		if err != nil {
+			return luaerror.Push(L, 1, fmt.Errorf("error parsing build options: %w", err))
+		}
+		L.Push(luadata.NewUserData(L, provider.NewBuildService(opts)))
 		return 1
 	},
 

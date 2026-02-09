@@ -33,10 +33,27 @@ func (p *Provider) AddDefaultPushImages(images []string) {
 	p.info.AddDefaultPushImages(images)
 }
 
-func (p *Provider) NewBuildService(onlyBuild bool) *BuildService {
+// NewBuildService returns a new build service. If opts is nil, default values will be used. If the opts.Builds is nil, a default value that
+// builds all buildable services for the current platform will be used
+func (p *Provider) NewBuildService(opts *BuildServiceOpts) *BuildService {
+	// Default values for the options
+	if opts == nil {
+		opts = &BuildServiceOpts{}
+	}
+
+	if opts.Builds == nil {
+		opts.Builds = []*BuildInfo{
+			{
+				ServicesNames: []string{}, // All buildable services
+				Platforms:     []string{}, // Current platform
+			},
+		}
+	}
+
+	// Build service
 	return &BuildService{
-		Service:   p.NewService("build"),
-		onlyBuild: onlyBuild,
+		Service: p.NewService("build"),
+		opts:    opts,
 	}
 }
 
