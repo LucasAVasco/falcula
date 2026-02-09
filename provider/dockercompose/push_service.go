@@ -20,7 +20,10 @@ func (s *PushService) Prepare(callback iface.OnExitCallback) (iface.Step, error)
 	procOpts.OnExit = func(info *process.ExitInfo) { callback(info, nil) }
 
 	// Images to push
-	images := s.Info.GetDefaultPushImages()
+	images, err := s.Info.GetDefaultPushImages()
+	if err != nil {
+		return nil, fmt.Errorf("error getting default push images: %w", err)
+	}
 
 	// Does not need to build if there are no images
 	if len(images) == 0 {
@@ -42,7 +45,10 @@ func (s *PushService) Start(callback iface.OnExitCallback) (iface.Step, error) {
 	procOpts.Wait = true // Tag a image is a fast operation
 
 	// Images to push
-	images := s.Info.GetDefaultPushImages()
+	images, err := s.Info.GetDefaultPushImages()
+	if err != nil {
+		return nil, fmt.Errorf("error getting default push images: %w", err)
+	}
 
 	// Tags the images
 	for _, repository := range s.repositories {
