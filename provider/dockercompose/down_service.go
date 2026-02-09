@@ -12,7 +12,6 @@ import (
 // DownService is a service that runs the docker-compose down command
 type DownService struct {
 	*Service
-	provider *Provider
 }
 
 func (s *DownService) Prepare(callback iface.OnExitCallback) (iface.Step, error) {

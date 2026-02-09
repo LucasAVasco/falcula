@@ -67,8 +67,7 @@ func (p *Provider) NewUpService(platform string) iface.Service {
 
 func (p *Provider) NewDownService() iface.Service {
 	return &DownService{
-		Service:  p.NewService("down"),
-		provider: p,
+		Service: p.NewService("down"),
 	}
 }
 
