@@ -17,26 +17,17 @@ type UpService struct {
 
 func (s *UpService) Prepare(callback iface.OnExitCallback) (iface.Step, error) {
 	procOpts := s.NewProcessOptions()
+	procOpts.OnExit = func(info *process.ExitInfo) { callback(info, nil) }
 
-	// Pull process
-	procs := make([]*process.Process, 0, 2)
-
-	proc, err := cmd.Pull(procOpts, s.Info.GetComposeFilePath())
-	if err != nil {
-		return nil, fmt.Errorf("error running 'Pull' command: %w", err)
-	}
-	procs = append(procs, proc)
-
-	// Build process
 	setDockerPlatformEnv(procOpts, s.platform)
 
-	proc, err = cmd.Build(procOpts, s.Info.GetComposeFilePath())
+	// Run UP process that only builds the containers without starting
+	proc, err := cmd.Up(procOpts, s.Info.GetComposeFilePath(), "--build", "--no-start")
 	if err != nil {
-		return nil, fmt.Errorf("error running 'Build' command: %w", err)
+		return nil, fmt.Errorf("error running 'up --build --no-start' command: %w", err)
 	}
-	procs = append(procs, proc)
 
-	return adapter.SerialProcessesToStep(procs, callback), nil
+	return adapter.ProcessToStep(proc), nil
 }
 
 func (s *UpService) Start(callback iface.OnExitCallback) (iface.Step, error) {
