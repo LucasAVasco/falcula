@@ -2,7 +2,6 @@
 package process
 
 import (
-	"github.com/LucasAVasco/falcula/multiplexer"
 	"github.com/LucasAVasco/falcula/provider/base"
 )
 
@@ -20,21 +19,17 @@ type Provider struct {
 
 // New creates a new process provider. Generates the steps from the commands. If the command is nil, the step will do nothing (you can
 // disable a step by setting the command to nil)
-func New(multi *multiplexer.Multiplexer, name string, prepareCmd *Command, mainCmd *Command) *Provider {
+func New(config *base.ProviderConfig, prepareCmd *Command, mainCmd *Command) *Provider {
 	return &Provider{
-		Provider:   base.NewProvider(multi, name),
+		Provider:   base.NewProvider(config),
 		prepareCmd: prepareCmd,
 		mainCmd:    mainCmd,
 	}
 }
 
-func (p *Provider) GetName() string {
-	return p.Name
-}
-
-func (p *Provider) NewService() *Service {
+func (p *Provider) NewService(opts *base.ServiceOpts) *Service {
 	return &Service{
-		Service:    p.Provider.NewService(""),
+		Service:    p.Provider.NewService("", opts),
 		prepareCmd: p.prepareCmd,
 		mainCmd:    p.mainCmd,
 	}
