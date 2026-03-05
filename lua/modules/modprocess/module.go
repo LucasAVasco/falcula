@@ -6,6 +6,8 @@ import (
 
 	"github.com/LucasAVasco/falcula/lua/luaclass"
 	"github.com/LucasAVasco/falcula/lua/luadata"
+	"github.com/LucasAVasco/falcula/lua/luaerror"
+	"github.com/LucasAVasco/falcula/lua/luaservice"
 	"github.com/LucasAVasco/falcula/lua/luatable"
 	"github.com/LucasAVasco/falcula/lua/modules/base"
 	"github.com/LucasAVasco/falcula/provider/process"
@@ -59,8 +61,14 @@ func (l *Loader) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 				return fmt.Errorf("error getting main command: %w", err)
 			}
 
+			// Provider configurations
+			config, err := luaservice.ParseProviderConfig(name, l.Opts.Multiplexer, L.Get(5))
+			if err != nil {
+				return fmt.Errorf("error getting provider configuration: %w", err)
+			}
+
 			// Sets the provider in the instance
-			provider := process.New(l.Opts.Multiplexer, name, prepareCmd, mainCmd)
+			provider := process.New(config, prepareCmd, mainCmd)
 			luaclass.SetAttribute(L, newObj, "_provider", provider)
 
 			return nil
@@ -91,7 +99,11 @@ var methods = map[string]lua.LGFunction{
 
 	"new_service": func(L *lua.LState) int {
 		provider := getProvider(L)
-		L.Push(luadata.NewUserData(L, provider.NewService()))
+		opts, err := luaservice.ParseBaseServiceOpts(L, L.Get(2))
+		if err != nil {
+			return luaerror.Push(L, 1, err)
+		}
+		L.Push(luadata.NewUserData(L, provider.NewService(opts)))
 		return 1
 	},
 }
