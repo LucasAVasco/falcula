@@ -18,7 +18,7 @@ function M.ServiceManager:new_list(arg_list) end
 
 ---Add a service to the manager.
 ---@param service FalculaServiceService The service to add to the manager.
-function M.ServiceManager:add_service(service, callbacks) end
+function M.ServiceManager:add_service(service) end
 
 ---Add multiple services to the manager
 ---Equivalent to calling `add_service` multiple times.
