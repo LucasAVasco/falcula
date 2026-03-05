@@ -290,6 +290,44 @@ func (s *Sidebar) setKeyBinds() {
 				}
 			},
 		},
+		{
+			Rune:  'u',
+			Desc:  "Disable service (must be enabled to be started)",
+			Async: true,
+			Bind: func() {
+				err := s.executeFunctionOnCurrentNode(&NodeHandlers{
+					OnManager: func(man *manager.Manager) error {
+						return man.Disable(nil).Wait()
+					},
+					OnService: func(man *manager.Manager, svc *enhanced.EnhancedService) error {
+						return svc.Disable()
+					},
+				})
+
+				if err != nil {
+					s.OnError(fmt.Errorf("error disabling: %w", err))
+				}
+			},
+		},
+		{
+			Rune:  'e',
+			Desc:  "Enable service",
+			Async: true,
+			Bind: func() {
+				err := s.executeFunctionOnCurrentNode(&NodeHandlers{
+					OnManager: func(man *manager.Manager) error {
+						return man.Enable(nil).Wait()
+					},
+					OnService: func(man *manager.Manager, svc *enhanced.EnhancedService) error {
+						return svc.Enable()
+					},
+				})
+
+				if err != nil {
+					s.OnError(fmt.Errorf("error disabling: %w", err))
+				}
+			},
+		},
 	})
 
 	// Adds the key binds to the tree
