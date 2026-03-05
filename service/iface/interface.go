@@ -19,11 +19,17 @@ type Step interface {
 	Abort(force bool) (*ExitInfo, error)
 }
 
+// Opts is the service options
+type Opts struct {
+	StartDisabled bool // The service will be disabled by default (it must be enabled before it can be used)
+}
+
 // Service represents a service managed by this application. All services must implement this interface
 // NOTE(LucasAVasco): this application considers that the `Prepare` and `Start` are fast operations, they must delegate all long running
 // operations to the returned `Step`
 type Service interface {
 	GetName() string
+	GetOpts() *Opts                                // Gets the service options. Can not be `nil`. Can not be changed
 	Prepare(callback OnExitCallback) (Step, error) // Generates a Step that will prepare the service to run.
 	Start(callback OnExitCallback) (Step, error)   // Generates a Step that will start the service
 }

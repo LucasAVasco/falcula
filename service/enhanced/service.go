@@ -39,6 +39,10 @@ func NewEnhancedService(svc iface.Service, callbacks *Callbacks) *EnhancedServic
 		callbacks: fillCallbacksWithDefaults(callbacks),
 	}
 
+	if e.svc.GetOpts().StartDisabled {
+		e.setStatus(status.Disabled)
+	}
+
 	return &e
 }
 
