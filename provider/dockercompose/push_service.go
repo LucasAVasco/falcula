@@ -6,6 +6,7 @@ import (
 
 	"github.com/LucasAVasco/falcula/process"
 	"github.com/LucasAVasco/falcula/provider/adapter"
+	"github.com/LucasAVasco/falcula/provider/base"
 	"github.com/LucasAVasco/falcula/provider/dockercompose/cmd"
 	"github.com/LucasAVasco/falcula/service/iface"
 )
@@ -21,6 +22,7 @@ type PushInfo struct {
 
 // PushServiceOpts is the options for the push service
 type PushServiceOpts struct {
+	base.ServiceOpts
 	Pushes []*PushInfo
 }
 

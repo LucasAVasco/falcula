@@ -2,7 +2,6 @@
 package dockercompose
 
 import (
-	"github.com/LucasAVasco/falcula/multiplexer"
 	"github.com/LucasAVasco/falcula/provider/base"
 	"github.com/LucasAVasco/falcula/provider/dockercompose/info"
 	"github.com/LucasAVasco/falcula/service/iface"
@@ -14,15 +13,15 @@ type Provider struct {
 	info *info.DockerComposeInfo
 }
 
-func New(multi *multiplexer.Multiplexer, name string, composeFile string) *Provider {
+func New(config *base.ProviderConfig, composeFile string) *Provider {
 	return &Provider{
-		Provider: base.NewProvider(multi, name),
+		Provider: base.NewProvider(config),
 		info:     info.NewComposeInfo(composeFile),
 	}
 }
 
-func (p *Provider) NewService(name string) *Service {
-	return NewService(p.Provider.NewService(name), p.info)
+func (p *Provider) NewService(name string, opts *base.ServiceOpts) *Service {
+	return NewService(p.Provider.NewService(name, opts), p.info)
 }
 
 func (p *Provider) AddDefaultPushImage(image string) {
@@ -52,28 +51,28 @@ func (p *Provider) NewBuildService(opts *BuildServiceOpts) *BuildService {
 
 	// Build service
 	return &BuildService{
-		Service: p.NewService("build"),
+		Service: p.NewService("build", &opts.ServiceOpts),
 		opts:    opts,
 	}
 }
 
-func (p *Provider) NewUpService(platform string) iface.Service {
+func (p *Provider) NewUpService(platform string, opts *base.ServiceOpts) iface.Service {
 	return &UpService{
-		Service:  p.NewService("up"),
+		Service:  p.NewService("up", opts),
 		platform: platform,
 	}
 }
 
-func (p *Provider) NewDownService() iface.Service {
+func (p *Provider) NewDownService(opts *base.ServiceOpts) iface.Service {
 	return &DownService{
-		Service: p.NewService("down"),
+		Service: p.NewService("down", opts),
 	}
 }
 
 // NewPushService returns a new push service. Opts must not be nil
 func (p *Provider) NewPushService(opts *PushServiceOpts) iface.Service {
 	return &PushService{
-		Service: p.NewService("push"),
+		Service: p.NewService("push", &opts.ServiceOpts),
 		opts:    opts,
 	}
 }

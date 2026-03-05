@@ -6,6 +6,7 @@ import (
 
 	"github.com/LucasAVasco/falcula/process"
 	"github.com/LucasAVasco/falcula/provider/adapter"
+	"github.com/LucasAVasco/falcula/provider/base"
 	"github.com/LucasAVasco/falcula/provider/dockercompose/cmd"
 	"github.com/LucasAVasco/falcula/service/iface"
 )
@@ -17,6 +18,7 @@ type BuildInfo struct {
 }
 
 type BuildServiceOpts struct {
+	base.ServiceOpts
 	NoPull bool         // Does not pull images, only builds
 	Builds []*BuildInfo // Builds
 }
