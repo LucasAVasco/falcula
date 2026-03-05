@@ -13,7 +13,8 @@ const (
 	Ended           Status = 6 // Service completed without error
 	Stopping        Status = 7
 	Stopped         Status = 8 // Service manually exited without error
-	Error           Status = 9
+	Disabled        Status = 9 // Service will not prepare or start until it is enabled
+	Error           Status = 255
 )
 
 // IsDoingNothing returns true if the service is doing nothing. Returns false if the status is 'Error'
@@ -41,6 +42,8 @@ func (s Status) ToString() string {
 		return "Stopping"
 	case Stopped:
 		return "Stopped"
+	case Disabled:
+		return "Disabled"
 	case Error:
 		return "Error"
 	default:
