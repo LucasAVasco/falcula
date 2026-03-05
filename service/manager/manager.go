@@ -381,3 +381,33 @@ func (m *Manager) RestartEach(force bool, onServiceEnded enhanced.ExitStepCallba
 		return exitInfo, err
 	})
 }
+
+// Disable disables all services
+func (m *Manager) Disable(onServiceEnded enhanced.ExitStepCallback) *waiter.Waiter {
+	onServiceEnded = applyDefaultExitProcessCallback(onServiceEnded)
+
+	return m.routineForEachService(func(svc *enhanced.EnhancedService) (*iface.ExitInfo, error) {
+		err := svc.Disable()
+		if err != nil {
+			err = fmt.Errorf("error disabling enhanced service '%s': %w", svc.GetName(), err)
+		}
+
+		onServiceEnded(svc, nil, err)
+		return nil, err
+	})
+}
+
+// Enable enables all services
+func (m *Manager) Enable(onServiceEnded enhanced.ExitStepCallback) *waiter.Waiter {
+	onServiceEnded = applyDefaultExitProcessCallback(onServiceEnded)
+
+	return m.routineForEachService(func(svc *enhanced.EnhancedService) (*iface.ExitInfo, error) {
+		err := svc.Enable()
+		if err != nil {
+			err = fmt.Errorf("error enabling enhanced service '%s': %w", svc.GetName(), err)
+		}
+
+		onServiceEnded(svc, nil, err)
+		return nil, err
+	})
+}
