@@ -8,6 +8,7 @@ import (
 	"github.com/LucasAVasco/falcula/lua/luadata"
 	"github.com/LucasAVasco/falcula/lua/luaerror"
 	"github.com/LucasAVasco/falcula/lua/luapath"
+	"github.com/LucasAVasco/falcula/lua/luaservice"
 	"github.com/LucasAVasco/falcula/lua/luatable"
 	"github.com/LucasAVasco/falcula/lua/modules/base"
 	"github.com/LucasAVasco/falcula/provider/dockercompose"
@@ -31,13 +32,19 @@ func (l *Loader) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 			composeFile := L.ToString(3)
 			opts := L.Get(4)
 
+			// Provider configurations
+			config, err := luaservice.ParseProviderConfig(providerName, l.Opts.Multiplexer, opts)
+			if err != nil {
+				return fmt.Errorf("error getting provider configuration: %w", err)
+			}
+
 			// Creates the provider for the compose file
-			composeFile, err := luapath.GetAbs(L, composeFile)
+			composeFile, err = luapath.GetAbs(L, composeFile)
 			if err != nil {
 				return fmt.Errorf("error getting absolute path: %w\n", err)
 			}
 
-			provider := dockercompose.New(l.Opts.Multiplexer, providerName, composeFile)
+			provider := dockercompose.New(config, composeFile)
 
 			// Parses the options
 			if opts != lua.LNil {
@@ -106,13 +113,21 @@ var methods = map[string]lua.LGFunction{
 	"new_up_service": func(L *lua.LState) int {
 		provider := getProvider(L)
 		platform := L.OptString(2, "")
-		L.Push(luadata.NewUserData(L, provider.NewUpService(platform)))
+		opts, err := luaservice.ParseBaseServiceOpts(L, L.Get(3))
+		if err != nil {
+			return luaerror.Push(L, 1, err)
+		}
+		L.Push(luadata.NewUserData(L, provider.NewUpService(platform, opts)))
 		return 1
 	},
 
 	"new_down_service": func(L *lua.LState) int {
 		provider := getProvider(L)
-		L.Push(luadata.NewUserData(L, provider.NewDownService()))
+		opts, err := luaservice.ParseBaseServiceOpts(L, L.Get(2))
+		if err != nil {
+			return luaerror.Push(L, 1, err)
+		}
+		L.Push(luadata.NewUserData(L, provider.NewDownService(opts)))
 		return 1
 	},
 

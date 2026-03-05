@@ -3,13 +3,14 @@ package moddockercompose
 import (
 	"fmt"
 
+	"github.com/LucasAVasco/falcula/lua/luaservice"
 	"github.com/LucasAVasco/falcula/lua/luatable"
 	"github.com/LucasAVasco/falcula/provider/dockercompose"
 	lua "github.com/yuin/gopher-lua"
 )
 
 // parseBuildServiceOpts parses the build service options
-func parseBuildServiceOpts(_ *lua.LState, argument lua.LValue) (*dockercompose.BuildServiceOpts, error) {
+func parseBuildServiceOpts(L *lua.LState, argument lua.LValue) (*dockercompose.BuildServiceOpts, error) {
 	if argument == lua.LNil {
 		return nil, nil
 	}
@@ -21,6 +22,13 @@ func parseBuildServiceOpts(_ *lua.LState, argument lua.LValue) (*dockercompose.B
 	table, ok := argument.(*lua.LTable)
 	if !ok {
 		return nil, fmt.Errorf("the options list must be a table, got %T", argument)
+	}
+
+	// Base service options
+	if baseOpts, err := luaservice.ParseBaseServiceOpts(L, table); err != nil {
+		return nil, err
+	} else if baseOpts != nil {
+		opts.ServiceOpts = *baseOpts
 	}
 
 	// 'no_pull'
@@ -74,7 +82,7 @@ func parseBuildServiceOpts(_ *lua.LState, argument lua.LValue) (*dockercompose.B
 }
 
 // parsePushServiceOpts parses the push service options
-func parsePushServiceOpts(_ *lua.LState, argument lua.LValue) (*dockercompose.PushServiceOpts, error) {
+func parsePushServiceOpts(L *lua.LState, argument lua.LValue) (*dockercompose.PushServiceOpts, error) {
 	if argument == lua.LNil {
 		return nil, nil
 	}
@@ -86,6 +94,13 @@ func parsePushServiceOpts(_ *lua.LState, argument lua.LValue) (*dockercompose.Pu
 	table, ok := argument.(*lua.LTable)
 	if !ok {
 		return nil, fmt.Errorf("the options list must be a table, got %T", argument)
+	}
+
+	// Base service options
+	if baseOpts, err := luaservice.ParseBaseServiceOpts(L, table); err != nil {
+		return nil, err
+	} else if baseOpts != nil {
+		opts.ServiceOpts = *baseOpts
 	}
 
 	// Parses the 'pushes' field
