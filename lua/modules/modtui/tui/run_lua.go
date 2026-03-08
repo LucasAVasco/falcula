@@ -8,7 +8,7 @@ import (
 	"github.com/LucasAVasco/falcula/lua/modules"
 	"github.com/LucasAVasco/falcula/service/enhanced"
 	"github.com/LucasAVasco/falcula/service/manager"
-	"github.com/LucasAVasco/falcula/tui/ioredirect"
+	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/ioredirect"
 
 	lua "github.com/yuin/gopher-lua"
 )

@@ -2,10 +2,10 @@
 package mainpage
 
 import (
-	"github.com/LucasAVasco/falcula/tui/help"
-	"github.com/LucasAVasco/falcula/tui/keybinds"
-	"github.com/LucasAVasco/falcula/tui/logpreview"
-	"github.com/LucasAVasco/falcula/tui/sidebar"
+	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/help"
+	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/keybinds"
+	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/logpreview"
+	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/sidebar"
 
 	"github.com/rivo/tview"
 )

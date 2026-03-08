@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/LucasAVasco/falcula/tui"
+	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui"
 )
 
 // StartCli starts the Falcula CLI

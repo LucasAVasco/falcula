@@ -1,6 +1,6 @@
 package mainpage
 
-import "github.com/LucasAVasco/falcula/tui/keybinds"
+import "github.com/LucasAVasco/falcula/lua/modules/modtui/tui/keybinds"
 
 func (m *MainPage) setMainPageKeyBinds() {
 	m.keyBindsHandler = keybinds.NewHandler("Main page")

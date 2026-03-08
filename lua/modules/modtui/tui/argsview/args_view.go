@@ -4,8 +4,8 @@ package argsview
 import (
 	"strings"
 
-	"github.com/LucasAVasco/falcula/tui/help"
-	"github.com/LucasAVasco/falcula/tui/keybinds"
+	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/help"
+	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/keybinds"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"

@@ -5,7 +5,7 @@ import (
 
 	"github.com/LucasAVasco/falcula/service/enhanced"
 	"github.com/LucasAVasco/falcula/service/manager"
-	"github.com/LucasAVasco/falcula/tui/keybinds"
+	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/keybinds"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"

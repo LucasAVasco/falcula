@@ -12,9 +12,9 @@ import (
 	"github.com/LucasAVasco/falcula/logfile"
 	"github.com/LucasAVasco/falcula/lua/modules"
 	"github.com/LucasAVasco/falcula/multiplexer"
-	"github.com/LucasAVasco/falcula/tui/argsview"
-	"github.com/LucasAVasco/falcula/tui/help"
-	"github.com/LucasAVasco/falcula/tui/mainpage"
+	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/argsview"
+	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/help"
+	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/mainpage"
 
 	"github.com/rivo/tview"
 	lua "github.com/yuin/gopher-lua"
