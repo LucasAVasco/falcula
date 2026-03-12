@@ -2,6 +2,7 @@
 package mainpage
 
 import (
+	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/app"
 	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/help"
 	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/keybinds"
 	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/logpreview"
@@ -12,7 +13,7 @@ import (
 
 // MainPage is the main page widget of the application
 type MainPage struct {
-	app             *tview.Application
+	app             *app.App
 	keyBindsHandler *keybinds.Handler
 	logFilePath     string
 	help            *help.HelpWidget
@@ -26,27 +27,19 @@ type MainPage struct {
 
 	// Callbacks
 
-	OnResetLua  func()
 	OnFocusArgs func()
+	OnExit      func()
 }
 
-func New(app *tview.Application, logFilePath string, help *help.HelpWidget) *MainPage {
+func New(app *app.App, logFilePath string, help *help.HelpWidget) *MainPage {
 	m := MainPage{
 		app:         app,
 		logFilePath: logFilePath,
 		help:        help,
 
 		// Callbacks
-		OnResetLua:  func() {},
 		OnFocusArgs: func() {},
-	}
-
-	// Raw stdout mode
-	if app == nil {
-		m.SideBar = sidebar.New(nil, logFilePath)
-		m.ServiceLogs = logpreview.New(nil, "", 0)
-		m.DebugLogs = logpreview.New(nil, "", 0)
-		return &m
+		OnExit:      func() {},
 	}
 
 	// Main layout

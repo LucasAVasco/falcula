@@ -4,6 +4,7 @@ package argsview
 import (
 	"strings"
 
+	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/app"
 	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/help"
 	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/keybinds"
 
@@ -13,7 +14,7 @@ import (
 
 // ArgsView is a widget that shows the current command arguments and allows the user to select arguments
 type ArgsView struct {
-	app                *tview.Application
+	app                *app.App
 	mainFlex           *tview.Flex
 	currentArgsPreview *tview.TextView
 	availableArgsTable *tview.Table
@@ -25,7 +26,7 @@ type ArgsView struct {
 	OnSelected func(args []string)
 }
 
-func New(app *tview.Application, help *help.HelpWidget) *ArgsView {
+func New(app *app.App, help *help.HelpWidget) *ArgsView {
 	a := ArgsView{
 		app:  app,
 		help: help,
@@ -33,11 +34,6 @@ func New(app *tview.Application, help *help.HelpWidget) *ArgsView {
 		// Callbacks
 		OnExit:     func() {},
 		OnSelected: func(arg []string) {},
-	}
-
-	// Raw standard output mode
-	if app == nil {
-		return &a
 	}
 
 	// Main widget
@@ -55,7 +51,10 @@ func New(app *tview.Application, help *help.HelpWidget) *ArgsView {
 	availableArgsTable.SetBorder(true)
 	availableArgsTable.SetSelectedFunc(func(row, column int) {
 		cell := availableArgsTable.GetCell(row, column)
-		a.OnSelected(cell.GetReference().([]string))
+
+		// INFO(LucasAVasco): Can not call `app.Draw()` inside event handlers if they are invoked in response to a key event (see
+		// https://github.com/rivo/tview/wiki/Concurrency). Doing so causes a deadlock
+		go a.OnSelected(cell.GetReference().([]string))
 	})
 	mainFlex.AddItem(availableArgsTable, 0, 3, true)
 	a.availableArgsTable = availableArgsTable
@@ -100,20 +99,12 @@ func (a *ArgsView) GetPrimitive() tview.Primitive {
 
 // SetCurrentArgs sets the current command arguments in the view
 func (a *ArgsView) SetCurrentArgs(args []string) {
-	if a.app == nil {
-		return
-	}
-
 	a.currentArgsPreview.SetText("Current arguments: " + strings.Join(args, " "))
 	a.app.Draw()
 }
 
 // SetAvailableArgs sets the available command arguments in the list. The user can select one of them
 func (a *ArgsView) SetAvailableArgs(argsList [][]string) {
-	if a.app == nil {
-		return
-	}
-
 	a.availableArgsTable.Clear()
 
 	for i, arg := range argsList {
@@ -127,10 +118,6 @@ func (a *ArgsView) SetAvailableArgs(argsList [][]string) {
 
 // FocusAvailableArgs focuses the available arguments list
 func (a *ArgsView) FocusAvailableArgs() {
-	if a.app == nil {
-		return
-	}
-
 	a.app.SetFocus(a.availableArgsTable)
 	a.availableArgsTable.Select(0, 0)
 }

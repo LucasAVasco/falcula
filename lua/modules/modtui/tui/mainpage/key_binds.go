@@ -11,14 +11,7 @@ func (m *MainPage) setMainPageKeyBinds() {
 		{
 			Rune: 'q',
 			Desc: "Exit",
-			Bind: func() { m.app.Stop() },
-		},
-		// Reload
-		{
-			Rune:  'R',
-			Desc:  "Restart Lua script",
-			Async: true,
-			Bind:  func() { m.OnResetLua() },
+			Bind: func() { m.OnExit() },
 		},
 		// Scroll the logs
 		{

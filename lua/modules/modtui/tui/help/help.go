@@ -2,6 +2,7 @@
 package help
 
 import (
+	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/app"
 	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/keybinds"
 
 	"github.com/gdamore/tcell/v2"
@@ -10,7 +11,7 @@ import (
 
 // HelpWidget is a widget that shows the available key binds
 type HelpWidget struct {
-	app   *tview.Application
+	app   *app.App
 	index int
 
 	// Widgets
@@ -26,7 +27,7 @@ type HelpWidget struct {
 	onExit func() // Added by the `Open` method
 }
 
-func New(app *tview.Application) *HelpWidget {
+func New(app *app.App) *HelpWidget {
 	h := HelpWidget{
 		app:    app,
 		OnOpen: func() {},

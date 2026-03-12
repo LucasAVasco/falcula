@@ -3,9 +3,9 @@ package sidebar
 import (
 	"fmt"
 
+	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/keybinds"
 	"github.com/LucasAVasco/falcula/service/enhanced"
 	"github.com/LucasAVasco/falcula/service/manager"
-	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/keybinds"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -20,10 +20,6 @@ type NodeHandlers struct {
 // executeFunctionOnCurrentNode executes a function in the current node. The current node can be a manager, a service, or neither. The
 // callback is executed based on the current node type
 func (s *Sidebar) executeFunctionOnCurrentNode(handlers *NodeHandlers) error {
-	if !s.HasApplication() {
-		return nil
-	}
-
 	node := s.getCurrentNode()
 	nodeReference := node.GetReference()
 
@@ -75,10 +71,6 @@ func (s *Sidebar) executeFunctionOnCurrentNode(handlers *NodeHandlers) error {
 
 // setKeyBinds sets the key binds for the side bar
 func (s *Sidebar) setKeyBinds() {
-	if !s.HasApplication() {
-		return
-	}
-
 	// Callback called when the user wants to open the log file in `Lnav`
 	LnavKeyBind := func() {
 		s.app.Suspend(func() {
@@ -335,9 +327,5 @@ func (s *Sidebar) setKeyBinds() {
 }
 
 func (s *Sidebar) GetKeyBindsHandler() *keybinds.Handler {
-	if !s.HasApplication() {
-		return nil
-	}
-
 	return s.keyBindsHandler
 }

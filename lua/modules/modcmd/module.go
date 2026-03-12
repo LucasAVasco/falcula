@@ -8,40 +8,27 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
-type Callbacks struct {
-	OnSetAvailableCmdArgs func(args [][]string) // Called when the available command arguments are set from Lua
-}
-
 // Module is a module that provides command line arguments to Falcula
 type Module struct {
 	base.BaseModule
-	cmdArgs          lua.LTable // The command line arguments
-	availableCmdArgs [][]string // The available command line arguments (possible choices)
-	callbacks        *Callbacks
+	cmdArgs lua.LTable // The command line arguments
 }
 
-func New(args []string, callbacks *Callbacks) *Module {
-	m := Module{
-		availableCmdArgs: make([][]string, 0),
-		callbacks:        callbacks,
-	}
+func New() *Module {
+	m := Module{}
 
-	if m.callbacks == nil {
-		m.callbacks = &Callbacks{}
-	}
-
-	if m.callbacks.OnSetAvailableCmdArgs == nil {
-		m.callbacks.OnSetAvailableCmdArgs = func(args [][]string) {}
-	}
-
-	m.setCurrentArgs(args)
+	m.cmdArgs = lua.LTable{}
 
 	return &m
 }
 
-func (m *Module) setCurrentArgs(args []string) {
-	m.cmdArgs = lua.LTable{}
+func (m *Module) SetCurrentScriptArgs(args []string) {
+	// Removes the old arguments
+	m.cmdArgs.ForEach(func(l1, l2 lua.LValue) {
+		m.cmdArgs.RawSet(l1, lua.LNil)
+	})
 
+	// Sets the new arguments
 	for _, arg := range args {
 		m.cmdArgs.Append(lua.LString(arg))
 	}
@@ -52,14 +39,15 @@ func (m *Module) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 
 	L.SetField(mod, "set_available_args", L.NewFunction(func(L *lua.LState) int {
 		argsList := L.ToTable(1)
+		availableCmdArgs := [][]string{}
 
 		for i := 0; i < argsList.Len(); i++ {
 			args := argsList.RawGetInt(i + 1).(*lua.LTable)
 
-			m.availableCmdArgs = append(m.availableCmdArgs, luatable.GetStringsFromLuaTable(args))
+			availableCmdArgs = append(availableCmdArgs, luatable.GetStringsFromLuaTable(args))
 		}
 
-		m.callbacks.OnSetAvailableCmdArgs(m.availableCmdArgs)
+		m.Config.Runtime.SetScriptAvailableArgs(availableCmdArgs)
 
 		return 0
 	}))
@@ -67,7 +55,7 @@ func (m *Module) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 	L.SetField(mod, "get_available_args", L.NewFunction(func(L *lua.LState) int {
 		newTable := L.NewTable()
 
-		for _, args := range m.availableCmdArgs {
+		for _, args := range m.Config.Runtime.GetScriptAvailableArgs() {
 			newTable.Append(luatable.GetLuaTableFromStrings(L, args))
 		}
 

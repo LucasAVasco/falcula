@@ -22,7 +22,7 @@ func (m *Module) returnErrorMessage(L *lua.LState, err error) int {
 		return 0
 	}
 
-	m.Opts.OnError(err)
+	m.Config.Runtime.Logger.LogError(err)
 	return luaerror.Push(L, 0, err)
 }
 

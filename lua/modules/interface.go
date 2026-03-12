@@ -8,7 +8,7 @@ import (
 
 // Module is the interface that all modules must implement
 type Module interface {
-	SetOpts(*base.Options)
+	SetBaseModuleConfig(config *base.Config)
 	Loader(L *lua.LState, name string, mod *lua.LTable) error
 	Close() error
 }

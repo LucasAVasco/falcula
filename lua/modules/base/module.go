@@ -3,12 +3,12 @@ package base
 
 // BaseModule is the base module that all other modules should inherit
 type BaseModule struct {
-	Opts *Options // Is set by the module loader
+	Config *Config // It is set by the module loader
 }
 
-// SetOpts sets the options for the module. Is called by the module loader
-func (b *BaseModule) SetOpts(opts *Options) {
-	b.Opts = opts
+// SetConfig sets the configurations common for all modules. Is called by the module loader
+func (b *BaseModule) SetBaseModuleConfig(opts *Config) {
+	b.Config = opts
 }
 
 func (b *BaseModule) Close() error {

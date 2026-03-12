@@ -6,13 +6,12 @@ import (
 	"io"
 	"sync"
 
+	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/app"
 	"github.com/rivo/tview"
 )
 
 // Preview is a widget that shows the logs. Supports both TUI and raw stdout mode
 type Preview struct {
-	toStdout bool
-
 	mutex         sync.Mutex
 	textView      *tview.TextView
 	ansiConverter io.Writer // Convert ANSI escape sequences to the color tags supported by `tview` and write to the text view
@@ -20,19 +19,11 @@ type Preview struct {
 
 // Creates a new log preview.
 //
-// The widget is a text view with the provided title. If you do not provide a `app`, this widget will output all the logs to the standard
-// output (raw stdout mode). Otherwise, it will output the logs to the text view widget of the provided `app`.
+// The widget is a text view with the provided title.
 //
 // You can set the maximum number of lines of the text view with `maxLines`.
-func New(app *tview.Application, title string, maxLines int) *Preview {
-	p := Preview{
-		toStdout: app == nil,
-	}
-
-	// No need to create the text view if outputting to the standard output
-	if app == nil {
-		return &p
-	}
+func New(app *app.App, title string, maxLines int) *Preview {
+	p := Preview{}
 
 	// Text view creation and configuration
 	p.textView = tview.NewTextView().SetDynamicColors(true).SetWrap(true).SetScrollable(true).SetMaxLines(maxLines).
@@ -63,12 +54,6 @@ func (p *Preview) Append(logs ...any) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
-	// Outputs the logs to the standard output
-	if p.toStdout {
-		fmt.Print(logs...)
-		return
-	}
-
 	// Outputs the logs to the text view
 	fmt.Fprint(p.ansiConverter, logs...)
 }
@@ -77,6 +62,12 @@ func (p *Preview) Append(logs ...any) {
 func (p *Preview) Write(b []byte) (n int, err error) {
 	p.Append(string(b))
 	return len(b), nil
+}
+
+func (p *Preview) WriteError(errToWrite error) (n int, err error) {
+	message := errToWrite.Error()
+	p.Append(message, "\n")
+	return len(message), nil
 }
 
 func (p *Preview) ScrollToBeginning() {

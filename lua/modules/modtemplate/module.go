@@ -36,7 +36,7 @@ func (m *Module) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 	}
 
 	// Register the 'Template' class
-	class, err := luaclass.New(L, &info, m.Opts.OnError)
+	class, err := luaclass.New(L, &info, m.Config.Runtime.Logger.GetOnErrorWithoutReturn())
 	if err != nil {
 		return fmt.Errorf("error creating class '%s' of '%s' module: %w", info.Name, name, err)
 

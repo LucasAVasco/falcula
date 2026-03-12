@@ -3,153 +3,125 @@ package tui
 
 import (
 	"fmt"
-	"os"
-	"strconv"
-	"strings"
 	"sync"
-	"time"
 
-	"github.com/LucasAVasco/falcula/logfile"
-	"github.com/LucasAVasco/falcula/lua/modules"
-	"github.com/LucasAVasco/falcula/multiplexer"
+	"github.com/LucasAVasco/falcula/lua/luaruntime"
+	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/app"
 	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/argsview"
 	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/help"
 	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/mainpage"
 
 	"github.com/rivo/tview"
-	lua "github.com/yuin/gopher-lua"
 )
 
-// Tui is the text user interface widget. If raw stdout mode is enabled, the user interface is not created and the logs are printed to the
-// standard output
+// Config is the configuration that the text user interface needs
+type Config struct {
+	Runtime      *luaruntime.Runtime
+	OnSelectArgs func(args []string)
+}
+
+// Tui is the text user interface widget.
 type Tui struct {
-	logFile         *os.File
-	rawMode         bool
-	multi           *multiplexer.Multiplexer
-	lastCommandArgs []string
-	luaState        *lua.LState
-	moduleLoader    *modules.Loader
-	luaFileMutex    sync.Mutex
+	config *Config
+
+	mutex     sync.Mutex
+	waitGroup sync.WaitGroup
 
 	// User interface
 
-	app      *tview.Application
+	app      *app.App
 	pages    *tview.Pages
 	mainPage *mainpage.MainPage
 	argsView *argsview.ArgsView
 	help     *help.HelpWidget
 }
 
-// New creates a new text user interface. If rawMode is true, the user interface is not created and the logs are printed to the standard
-// output
-func New(rawMode bool) (*Tui, error) {
+// New creates a new text user interface
+func New(config *Config) (*Tui, error) {
+	if config.OnSelectArgs == nil {
+		config.OnSelectArgs = func(args []string) {}
+	}
+
 	t := Tui{
-		rawMode: rawMode,
+		config: config,
 	}
-
-	// Log file
-	logFile, err := logfile.New()
-	if err != nil {
-		return nil, fmt.Errorf("error creating log file: %w", err)
-	}
-	t.logFile = logFile
-
-	// Multiplexer
-	t.multi = multiplexer.New(func(client *multiplexer.Client, b []byte) (int, error) {
-		level := client.GetLevel()
-		name := client.GetName()
-		color := client.GetColor()
-		id := client.GetId()
-
-		str := string(b)
-
-		// Removes the trailing newline
-		if str[len(str)-1] == '\n' {
-			str = str[:len(str)-1]
-		}
-		lines := strings.SplitSeq(str, "\n")
-
-		for line := range lines {
-			// Uses the 'syslog_log' format recognized by 'Lnav'
-			logFileLine := time.Now().Format(time.RFC3339) + " " + name + " " + level + "[" + strconv.Itoa(int(id)) + "]: " + line + "\n"
-
-			_, err := t.logFile.Write([]byte(logFileLine))
-			if err != nil {
-				return 0, err
-			}
-
-			// Adds the log to the circular buffers
-			uiLine := color.Sprint(name+" "+level+": ") + line + "\n"
-			t.mainPage.ServiceLogs.Append(uiLine)
-		}
-
-		return len(b), nil
-	})
 
 	return &t, nil
 }
 
 // Close the text user interface. Can be called multiple times.
-func (t *Tui) Close() error {
-	// Multiplexer
-	if t.multi != nil {
-		err := t.multi.Close()
+func (t *Tui) Close() {
+	t.Hide()
+}
+
+// Show the text user interface. This is a non-blocking call and is idempotent
+func (t *Tui) Show() error {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+
+	if t.app == nil {
+		err := t.newApp()
 		if err != nil {
-			return fmt.Errorf("error closing multiplexer: %w", err)
+			return fmt.Errorf("error creating 'tview' application: %w", err)
 		}
-		t.multi = nil
+
+		for _, manager := range t.config.Runtime.GetManagers() {
+			err := t.AddManagerToSidebar(manager)
+			if err != nil {
+				return fmt.Errorf("error adding manager to sidebar: %w", err)
+			}
+		}
+
+		t.SetAvailableScriptArgs(t.config.Runtime.GetScriptAvailableArgs())
+		t.SetCurrentScriptArgs(t.config.Runtime.GetScriptCurrentArgs())
 	}
 
-	// Log file
-	if t.logFile != nil {
-		logFileName := t.logFile.Name()
+	t.waitGroup.Go(func() {
+		// Set loggers
+		t.config.Runtime.Logger.SetOnServiceLog(t.mainPage.ServiceLogs.Write)
+		t.config.Runtime.Logger.SetOnDebugLog(t.mainPage.DebugLogs.Write)
+		t.config.Runtime.Logger.SetOnErrorLog(t.mainPage.DebugLogs.WriteError)
 
-		// Closing
-		err := t.logFile.Close()
+		// Run the app
+		err := t.app.Run()
 		if err != nil {
-			return fmt.Errorf("error closing log file: %w", err)
+			t.config.Runtime.Logger.LogError(fmt.Errorf("error running 'tview' application: %w", err))
 		}
-
-		// Deletes the file
-		err = os.Remove(logFileName)
-		if err != nil {
-			return fmt.Errorf("error removing log file: %w", err)
-		}
-
-		t.logFile = nil
-	}
+	})
 
 	return nil
 }
 
-// Open the text user interface
-func (t *Tui) Open() error {
-	// Creates a new application
-	err := t.newApp()
-	if err != nil {
-		return fmt.Errorf("error creating 'tview' application: %w", err)
+// Hide the text user interface. This is a non-blocking call and is idempotent
+func (t *Tui) Hide() {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+
+	if t.app == nil {
+		return
 	}
 
-	// Runs the falcula file
-	if os.Args[1] == "run" || os.Args[1] == "run-raw" {
-		args := os.Args[2:]
-		t.lastCommandArgs = args
+	t.config.Runtime.Logger.ResetLoggers()
+	t.app.Stop()
+}
 
-		if t.rawMode {
-			err := t.executeLuaFile(args)
-			if err != nil {
-				return fmt.Errorf("error executing Lua file: %w", err)
-			}
-		} else {
-			t.createLuaRoutine(args)
+// IsVisible checks if the text user interface is visible
+func (t *Tui) IsVisible() bool {
+	return t.app.IsRunning()
+}
 
-			// Runs the application
-			err = t.app.Run()
-			if err != nil {
-				return fmt.Errorf("error running 'tview' application: %w", err)
-			}
-		}
+// WaitForHide waits until the text user interface is hidden
+func (t *Tui) WaitForHide() {
+	t.waitGroup.Wait()
+}
+
+// UpdateConfig updates the configuration of the text user interface
+func (t *Tui) UpdateConfig(config *Config) {
+	if config.Runtime != nil {
+		t.config.Runtime = config.Runtime
 	}
 
-	return nil
+	if config.OnSelectArgs != nil {
+		t.config.OnSelectArgs = config.OnSelectArgs
+	}
 }

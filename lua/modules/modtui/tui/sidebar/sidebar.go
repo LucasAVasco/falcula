@@ -5,16 +5,17 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/app"
+	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/keybinds"
 	"github.com/LucasAVasco/falcula/service/enhanced"
 	"github.com/LucasAVasco/falcula/service/manager"
-	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/keybinds"
 
 	"github.com/rivo/tview"
 )
 
 // Sidebar is the side bar widget of the application.
 type Sidebar struct {
-	app             *tview.Application
+	app             *app.App
 	keyBindsHandler *keybinds.Handler
 	logFilePath     string
 
@@ -28,10 +29,7 @@ type Sidebar struct {
 }
 
 // Create a new side bar widget.
-//
-// If `app` is `nil`, the side bar will not be created and all its methods will become dummy. Does nothing, but does not return an error, so
-// you can create a side bar even without a `tview` application.
-func New(app *tview.Application, logFilePath string) *Sidebar {
+func New(app *app.App, logFilePath string) *Sidebar {
 	s := Sidebar{
 		app:         app,
 		logFilePath: logFilePath,
@@ -51,35 +49,18 @@ func New(app *tview.Application, logFilePath string) *Sidebar {
 	return &s
 }
 
-// HasApplication returns `true` if the side bar has a `tview` application.
-func (s *Sidebar) HasApplication() bool {
-	return s.app != nil
-}
-
 // GetPrimitive returns the primitive of the widget (used to include it in another widget). This function must not be called if outputting
 // to the standard output (raw stdout mode)
 func (s *Sidebar) GetPrimitive() tview.Primitive {
-	if !s.HasApplication() {
-		return nil
-	}
-
 	return s.tree
 }
 
 // SetFocus sets the focus on the side bar
 func (s *Sidebar) SetFocus() {
-	if !s.HasApplication() {
-		return
-	}
-
 	s.app.SetFocus(s.tree)
 }
 
 func (s *Sidebar) getCurrentNode() *tview.TreeNode {
-	if !s.HasApplication() {
-		return nil
-	}
-
 	return s.tree.GetCurrentNode()
 }
 
@@ -87,10 +68,6 @@ func (s *Sidebar) getCurrentNode() *tview.TreeNode {
 
 // getManagerNode gets the node of a service manager
 func (s *Sidebar) getManagerNode(man *manager.Manager) *tview.TreeNode {
-	if !s.HasApplication() {
-		return nil
-	}
-
 	children := s.root.GetChildren()
 
 	// Index of the node
@@ -107,19 +84,11 @@ func (s *Sidebar) getManagerNode(man *manager.Manager) *tview.TreeNode {
 
 // HasManager returns `true` if the side bar has a manager
 func (s *Sidebar) HasManager(man *manager.Manager) bool {
-	if !s.HasApplication() {
-		return false
-	}
-
 	return s.getManagerNode(man) != nil
 }
 
 // AddManager adds a manager to the side bar
 func (s *Sidebar) AddManager(man *manager.Manager) error {
-	if !s.HasApplication() {
-		return nil
-	}
-
 	if s.HasManager(man) {
 		return fmt.Errorf("manager '%s' already exists", man.GetName())
 	}
@@ -136,10 +105,6 @@ func (s *Sidebar) AddManager(man *manager.Manager) error {
 
 // RemoveManager removes a manager from the side bar
 func (s *Sidebar) RemoveManager(man *manager.Manager) error {
-	if !s.HasApplication() {
-		return nil
-	}
-
 	// Gets the manager node
 	node := s.getManagerNode(man)
 	if node == nil {
@@ -155,16 +120,23 @@ func (s *Sidebar) RemoveManager(man *manager.Manager) error {
 	return nil
 }
 
+// RemoveAllManagers removes all managers from the side bar
+func (s *Sidebar) RemoveAllManagers() error {
+	for _, child := range s.root.GetChildren() {
+		s.root.RemoveChild(child)
+	}
+
+	// Updates the UI
+	s.app.Draw()
+	return nil
+}
+
 // }}}
 
 // service functions {{{
 
 // getServiceNode gets the node of a service
 func (s *Sidebar) getServiceNode(man *manager.Manager, svc *enhanced.EnhancedService) (*tview.TreeNode, error) {
-	if !s.HasApplication() {
-		return nil, nil
-	}
-
 	managerNode := s.getManagerNode(man)
 	if managerNode == nil {
 		return nil, fmt.Errorf("manager '%s' not found", man.GetName())
@@ -185,19 +157,11 @@ func (s *Sidebar) getServiceNode(man *manager.Manager, svc *enhanced.EnhancedSer
 
 // generateServiceText gets the text to show in the service node
 func (s *Sidebar) generateServiceText(svc *enhanced.EnhancedService) string {
-	if !s.HasApplication() {
-		return ""
-	}
-
 	return svc.GetName() + " (" + svc.GetStatus().ToString() + ")"
 }
 
 // HasService checks if the side bar contains a service
 func (s *Sidebar) HasService(man *manager.Manager, svc *enhanced.EnhancedService) (bool, error) {
-	if !s.HasApplication() {
-		return false, nil
-	}
-
 	node, err := s.getServiceNode(man, svc)
 	if err != nil {
 		return false, fmt.Errorf("error getting node of service '%s' of manager '%s': %w", svc.GetName(), man.GetName(), err)
@@ -208,10 +172,6 @@ func (s *Sidebar) HasService(man *manager.Manager, svc *enhanced.EnhancedService
 
 // AddService adds a service to the side bar
 func (s *Sidebar) AddService(man *manager.Manager, svc *enhanced.EnhancedService) error {
-	if !s.HasApplication() {
-		return nil
-	}
-
 	// Checks if the service already exists
 	serviceNode, err := s.HasService(man, svc)
 	if err != nil {
@@ -241,10 +201,6 @@ func (s *Sidebar) AddService(man *manager.Manager, svc *enhanced.EnhancedService
 
 // RemoveService removes a service from the side bar
 func (s *Sidebar) RemoveService(man *manager.Manager, svc *enhanced.EnhancedService) error {
-	if !s.HasApplication() {
-		return nil
-	}
-
 	// Gets the service node
 	node, err := s.getServiceNode(man, svc)
 	if err != nil {
@@ -266,10 +222,6 @@ func (s *Sidebar) RemoveService(man *manager.Manager, svc *enhanced.EnhancedServ
 
 // UpdateServiceStatus updates the status of a service in the side bar
 func (s *Sidebar) UpdateServiceStatus(man *manager.Manager, svc *enhanced.EnhancedService) error {
-	if !s.HasApplication() {
-		return nil
-	}
-
 	// Gets the service node
 	node, err := s.getServiceNode(man, svc)
 	if err != nil {

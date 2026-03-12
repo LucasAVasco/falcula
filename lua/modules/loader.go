@@ -4,36 +4,32 @@ package modules
 import (
 	"fmt"
 
+	"github.com/LucasAVasco/falcula/lua/luaruntime"
 	"github.com/LucasAVasco/falcula/lua/modules/base"
 
 	lua "github.com/yuin/gopher-lua"
 )
 
-// ModulesOptions is the options that a module requires to work
-type ModulesOptions = base.Options
+// ModulesConfig is the base configuration that a module requires to work
+type ModulesConfig = base.Config
 
 // Loader is a loader for Lua modules
 type Loader struct {
-	luaState   *lua.LState
-	loaderOpts *base.Options
-	modules    map[string]Module
+	runtime       *luaruntime.Runtime
+	modulesConfig *ModulesConfig
+	modules       map[string]Module
 }
 
-func NewLoader(L *lua.LState, opts *ModulesOptions) (*Loader, error) {
-	loaderOpts, err := base.FillOptionsWithDefaults(opts)
-	if err != nil {
-		return nil, fmt.Errorf("error filling options with default values: %w", err)
-	}
-
+func NewLoader(runtime *luaruntime.Runtime, config *ModulesConfig) (*Loader, error) {
 	return &Loader{
-		luaState:   L,
-		loaderOpts: loaderOpts,
-		modules:    make(map[string]Module),
+		runtime:       runtime,
+		modulesConfig: config,
+		modules:       make(map[string]Module),
 	}, nil
 }
 
 func (l *Loader) LoadModuleFromFunction(moduleName string, function func(name string, L *lua.LState) int) {
-	l.luaState.PreloadModule(moduleName, func(l *lua.LState) int {
+	l.runtime.GetLuaState().PreloadModule(moduleName, func(l *lua.LState) int {
 		return function(moduleName, l)
 	})
 }
@@ -41,13 +37,13 @@ func (l *Loader) LoadModuleFromFunction(moduleName string, function func(name st
 func (l *Loader) LoadModule(moduleName string, module Module) {
 	l.modules[moduleName] = module
 
-	module.SetOpts(l.loaderOpts)
-	l.luaState.PreloadModule(moduleName, func(L *lua.LState) int {
+	module.SetBaseModuleConfig(l.modulesConfig)
+	l.runtime.GetLuaState().PreloadModule(moduleName, func(L *lua.LState) int {
 		moduleTable := L.NewTable()
 
 		err := module.Loader(L, moduleName, moduleTable)
 		if err != nil {
-			l.loaderOpts.OnError(fmt.Errorf("error loading module '%s': %w", moduleName, err))
+			l.modulesConfig.Runtime.Logger.LogError(fmt.Errorf("error loading module '%s': %w", moduleName, err))
 			return 0
 		}
 

@@ -62,7 +62,7 @@ func (l *Loader) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 			}
 
 			// Provider configurations
-			config, err := luaservice.ParseProviderConfig(name, l.Opts.Multiplexer, L.Get(5))
+			config, err := luaservice.ParseProviderConfig(name, l.Config.Runtime.Logger.GetServicesMultiplexer(), L.Get(5))
 			if err != nil {
 				return fmt.Errorf("error getting provider configuration: %w", err)
 			}
@@ -75,7 +75,7 @@ func (l *Loader) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 		},
 		Methods: methods,
 	}
-	class, err := luaclass.New(L, &info, l.Opts.OnError)
+	class, err := luaclass.New(L, &info, l.Config.Runtime.Logger.GetOnErrorWithoutReturn())
 	if err != nil {
 		return fmt.Errorf("error creating class '%s' of '%s' module: %w", info.Name, name, err)
 	}
