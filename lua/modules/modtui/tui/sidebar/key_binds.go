@@ -205,7 +205,7 @@ func (s *Sidebar) setKeyBinds() {
 		},
 		// Delete service
 		{
-			Rune:  'd',
+			Rune:  'x',
 			Desc:  "Delete service",
 			Async: true,
 			Bind: func() {
@@ -244,7 +244,7 @@ func (s *Sidebar) setKeyBinds() {
 			},
 		},
 		{
-			Rune:  'D',
+			Rune:  'X',
 			Desc:  "Delete service (force deletion)",
 			Async: true,
 			Bind: func() {
@@ -283,7 +283,7 @@ func (s *Sidebar) setKeyBinds() {
 			},
 		},
 		{
-			Rune:  'u',
+			Rune:  'd',
 			Desc:  "Disable service (must be enabled to be started)",
 			Async: true,
 			Bind: func() {
