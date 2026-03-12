@@ -8,7 +8,7 @@ import (
 )
 
 // Callback is the callback function that is called when data is written to the multiplexer
-type Callback func(writer *Client, b []byte) (int, error)
+type Callback func(client *Client, b []byte) (int, error)
 
 // Multiplexer is the log multiplexer. It generates clients that send logs to the log multiplexer
 type Multiplexer struct {
