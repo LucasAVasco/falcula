@@ -108,9 +108,37 @@ func (r *Runtime) GetLastExecutedFile() string {
 	return r.lastExecutedFile
 }
 
-// RunScript executes a Lua script with the given arguments. It updates the current arguments and the last executed file returned by
+// Run runs a Lua code with the given arguments. It updates the current arguments, but does not update the last executed file because there
+// is no file
+func (r *Runtime) Run(luaCode string, args ...string) error {
+	r.lastExecutedFile = ""
+
+	// Lua state used to execute the file
+	state := r.GetLuaState()
+	if state == nil {
+		return fmt.Errorf("lua state is nil")
+	}
+
+	// Sets the command line arguments
+	r.scriptCurrentArgs = args
+	argTable := state.NewTable()
+	for i, arg := range args {
+		argTable.RawSetInt(i+1, lua.LString(arg))
+	}
+	state.SetGlobal("arg", argTable)
+	r.onSetScriptCurrentArgs(args)
+
+	// Executes the file
+	err := state.DoString(luaCode)
+	if err != nil {
+		return fmt.Errorf("error executing Lua code: %w", err)
+	}
+	return nil
+}
+
+// RunFile executes a Lua script with the given arguments. It updates the current arguments and the last executed file returned by
 // `GetLastExecutedFile()`
-func (r *Runtime) RunScript(file string, args ...string) error {
+func (r *Runtime) RunFile(file string, args ...string) error {
 	r.lastExecutedFile = file
 
 	// Lua state used to execute the file
