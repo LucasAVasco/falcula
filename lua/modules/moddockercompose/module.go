@@ -123,7 +123,7 @@ var methods = map[string]lua.LGFunction{
 
 	"new_down_service": func(L *lua.LState) int {
 		provider := getProvider(L)
-		opts, err := luaservice.ParseBaseServiceOpts(L, L.Get(2))
+		opts, err := parseDownServiceOpts(L, L.Get(2))
 		if err != nil {
 			return luaerror.Push(L, 1, err)
 		}

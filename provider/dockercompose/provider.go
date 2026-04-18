@@ -63,9 +63,13 @@ func (p *Provider) NewUpService(platform string, opts *base.ServiceOpts) iface.S
 	}
 }
 
-func (p *Provider) NewDownService(opts *base.ServiceOpts) iface.Service {
+func (p *Provider) NewDownService(opts *DownServiceOpts) iface.Service {
+	if opts == nil {
+		opts = &DownServiceOpts{}
+	}
 	return &DownService{
-		Service: p.NewService("down", opts),
+		Service: p.NewService("down", &opts.ServiceOpts),
+		opts:    opts,
 	}
 }
 

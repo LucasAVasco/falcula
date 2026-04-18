@@ -57,10 +57,13 @@ function M.Provider:new_build_service(opts) end
 ---@param opts? FalculaServiceServiceOpts Options for the service.
 function M.Provider:new_up_service(platform, opts) end
 
+---@class (exact) FalculaComposeProvider.DownServiceOpts: FalculaServiceServiceOpts Options for the 'Down' service.
+---@field volumes? boolean Remove the anonymous volumes defined in the compose file.
+
 ---Create a new 'Down' service.
 ---This service stops and removes the containers defined in the compose file.
 ---@return FalculaServiceService
----@param opts? FalculaServiceServiceOpts Options for the service.
+---@param opts? FalculaComposeProvider.DownServiceOpts Options for the service.
 function M.Provider:new_down_service(opts) end
 
 ---@class (exact) FalculaComposeProvider.PushInfo Information to push services images to a registry.

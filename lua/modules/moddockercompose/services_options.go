@@ -173,3 +173,33 @@ func parsePushServiceOpts(L *lua.LState, argument lua.LValue) (*dockercompose.Pu
 
 	return &opts, nil
 }
+
+// parseDownServiceOpts parses the down service options
+func parseDownServiceOpts(L *lua.LState, argument lua.LValue) (*dockercompose.DownServiceOpts, error) {
+	if argument == lua.LNil {
+		return nil, nil
+	}
+
+	// Result
+	opts := dockercompose.DownServiceOpts{}
+
+	// Checks if the argument is a table
+	table, ok := argument.(*lua.LTable)
+	if !ok {
+		return nil, fmt.Errorf("the options list must be a table, got %T", argument)
+	}
+
+	// Base service options
+	if baseOpts, err := luaservice.ParseBaseServiceOpts(L, table); err != nil {
+		return nil, err
+	} else if baseOpts != nil {
+		opts.ServiceOpts = *baseOpts
+	}
+
+	// parses the 'volumes' field
+	if volumes := table.RawGetString("volumes"); volumes.Type() == lua.LTBool {
+		opts.RemoveAnonymousVolumes = bool(volumes.(lua.LBool))
+	}
+
+	return &opts, nil
+}
