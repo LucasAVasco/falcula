@@ -25,10 +25,26 @@ func (a *App) RunScript(scriptName string, args ...string) error {
 	// modtui does not closes the TUI when it is closed. The TUI is persistent across runs. Need to close it manually
 	defer modtui.ClosePersistentTui()
 
+	// Changes to project directory
+	err = os.Chdir(a.project.Folder)
+	if err != nil {
+		return fmt.Errorf("error changing to project directory: %w", err)
+	}
+
 	// Script to run
 	script, err := a.project.GetScriptByName(scriptName)
 	if err != nil {
 		return fmt.Errorf("error getting script to run: %w", err)
+	}
+
+	configureCmd := func(cmd *exec.Cmd) {
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.Stdin = os.Stdin
+
+		cmd.Env = os.Environ()
+		cmd.Env = append(cmd.Env, "FALCULA_PROJECT_DIR="+a.project.Folder)
+		cmd.Env = append(cmd.Env, "FALCULA_INVOKE_DIR="+a.invokeDir)
 	}
 
 	if script.Command.IsNotEmpty() {
@@ -38,10 +54,7 @@ func (a *App) RunScript(scriptName string, args ...string) error {
 		} else {
 			cmd = process.CreateCmd(true, script.Command.String)
 		}
-
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		cmd.Stdin = os.Stdin
+		configureCmd(cmd)
 
 		err := cmd.Run()
 		if err != nil {
@@ -81,9 +94,7 @@ func (a *App) RunScript(scriptName string, args ...string) error {
 
 	} else if script.File != "" {
 		cmd := process.CreateCmd(false, script.File)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		cmd.Stdin = os.Stdin
+		configureCmd(cmd)
 
 		err := cmd.Run()
 		if err != nil {
