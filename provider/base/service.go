@@ -17,7 +17,7 @@ type ServiceConfig struct {
 
 // ServiceOpts is a structure that holds the options for a service. It is optional
 type ServiceOpts struct {
-	StartDisabled *bool
+	StartDisabled *bool `lua:"start_disabled"`
 }
 
 // Service represents a base service with the basic data required by a service. Any service should inherit from this

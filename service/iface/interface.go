@@ -21,7 +21,7 @@ type Step interface {
 
 // Opts is the service options
 type Opts struct {
-	StartDisabled bool // The service will be disabled by default (it must be enabled before it can be used)
+	StartDisabled bool `lua:"start_disabled"` // The service will be disabled by default (it must be enabled before it can be used)
 }
 
 // Service represents a service managed by this application. All services must implement this interface

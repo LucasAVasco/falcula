@@ -8,8 +8,8 @@ import (
 	"github.com/LucasAVasco/falcula/lua/luadata"
 	"github.com/LucasAVasco/falcula/lua/luaerror"
 	"github.com/LucasAVasco/falcula/lua/luapath"
-	"github.com/LucasAVasco/falcula/lua/luaservice"
 	"github.com/LucasAVasco/falcula/lua/luatable"
+	"github.com/LucasAVasco/falcula/lua/maplua"
 	"github.com/LucasAVasco/falcula/lua/modules/base"
 	"github.com/LucasAVasco/falcula/provider/dockercompose"
 
@@ -30,10 +30,12 @@ func (l *Loader) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 		Constructor: func(L *lua.LState, newObj *lua.LTable) error {
 			providerName := L.ToString(2)
 			composeFile := L.ToString(3)
-			opts := L.Get(4)
 
 			// Provider configurations
-			config, err := luaservice.ParseProviderConfig(providerName, l.Config.Runtime.Logger.GetServicesMultiplexer(), opts)
+			config := dockercompose.ProviderConfig{}
+			config.Name = providerName
+			config.Multiplexer = l.Config.Runtime.Logger.GetServicesMultiplexer()
+			err := maplua.Unmarshal(L.OptTable(4, L.NewTable()), &config.Opts)
 			if err != nil {
 				return fmt.Errorf("error getting provider configuration: %w", err)
 			}
@@ -44,17 +46,7 @@ func (l *Loader) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 				return fmt.Errorf("error getting absolute path: %w\n", err)
 			}
 
-			provider := dockercompose.New(config, composeFile)
-
-			// Parses the options
-			if opts != lua.LNil {
-				opts := opts.(*lua.LTable)
-				images := opts.RawGet(lua.LString("push_images"))
-				if images != lua.LNil {
-					images := luatable.GetStringsFromLuaTable(images.(*lua.LTable))
-					provider.AddDefaultPushImages(images)
-				}
-			}
+			provider := dockercompose.New(&config, composeFile)
 
 			// Sets the provider in the instance
 			luaclass.SetAttribute(L, newObj, "_provider", provider)
@@ -102,42 +94,47 @@ var methods = map[string]lua.LGFunction{
 
 	"new_build_service": func(L *lua.LState) int {
 		provider := getProvider(L)
-		opts, err := parseBuildServiceOpts(L, L.Get(2))
+		opts := dockercompose.BuildServiceOpts{}
+		err := maplua.Unmarshal(L.OptTable(2, L.NewTable()), &opts)
 		if err != nil {
 			return luaerror.Push(L, 1, fmt.Errorf("error parsing build options: %w", err))
 		}
-		L.Push(luadata.NewUserData(L, provider.NewBuildService(opts)))
+		L.Push(luadata.NewUserData(L, provider.NewBuildService(&opts)))
 		return 1
 	},
 
 	"new_up_service": func(L *lua.LState) int {
 		provider := getProvider(L)
 		platform := L.OptString(2, "")
-		opts, err := luaservice.ParseBaseServiceOpts(L, L.Get(3))
+
+		opts := dockercompose.ServiceOpts{}
+		err := maplua.Unmarshal(L.OptTable(3, L.NewTable()), &opts)
 		if err != nil {
 			return luaerror.Push(L, 1, err)
 		}
-		L.Push(luadata.NewUserData(L, provider.NewUpService(platform, opts)))
+		L.Push(luadata.NewUserData(L, provider.NewUpService(platform, &opts)))
 		return 1
 	},
 
 	"new_down_service": func(L *lua.LState) int {
 		provider := getProvider(L)
-		opts, err := parseDownServiceOpts(L, L.Get(2))
+		opts := dockercompose.DownServiceOpts{}
+		err := maplua.Unmarshal(L.OptTable(2, L.NewTable()), &opts)
 		if err != nil {
 			return luaerror.Push(L, 1, err)
 		}
-		L.Push(luadata.NewUserData(L, provider.NewDownService(opts)))
+		L.Push(luadata.NewUserData(L, provider.NewDownService(&opts)))
 		return 1
 	},
 
 	"new_push_service": func(L *lua.LState) int {
 		provider := getProvider(L)
-		opts, err := parsePushServiceOpts(L, L.Get(2))
+		opts := dockercompose.PushServiceOpts{}
+		err := maplua.Unmarshal(L.OptTable(2, L.NewTable()), &opts)
 		if err != nil {
 			return luaerror.Push(L, 1, fmt.Errorf("error parsing push options: %w", err))
 		}
-		L.Push(luadata.NewUserData(L, provider.NewPushService(opts)))
+		L.Push(luadata.NewUserData(L, provider.NewPushService(&opts)))
 		return 1
 	},
 }

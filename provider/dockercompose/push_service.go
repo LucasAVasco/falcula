@@ -13,17 +13,17 @@ import (
 
 // PushInfo is the information to push a docker-compose image
 type PushInfo struct {
-	Services   []string // Push images from this service
-	Images     []string // Push these images
-	Platforms  []string // Platforms of the images to push, Applied to all images
-	Registries []string // Pushes the images to these registries
-	Tag        string   // Tag of the image in the registry. Applied to all images
+	Services   []string `lua:"services"`   // Push images from this service
+	Images     []string `lua:"images"`     // Push these images
+	Platforms  []string `lua:"platforms"`  // Platforms of the images to push, Applied to all images
+	Registries []string `lua:"registries"` // Pushes the images to these registries
+	Tag        string   `lua:"tag"`        // Tag of the image in the registry. Applied to all images
 }
 
 // PushServiceOpts is the options for the push service
 type PushServiceOpts struct {
-	base.ServiceOpts
-	Pushes []*PushInfo
+	base.ServiceOpts `lua:",inline"`
+	Pushes           []*PushInfo `lua:"pushes"`
 }
 
 // PushService is a service that push docker-compose images to a registry

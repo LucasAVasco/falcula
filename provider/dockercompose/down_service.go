@@ -12,8 +12,8 @@ import (
 
 // DownServiceOpts is the options for the DownService
 type DownServiceOpts struct {
-	base.ServiceOpts
-	RemoveAnonymousVolumes bool // Also removes the anonymous volumes, default is false
+	base.ServiceOpts       `lua:",inline"`
+	RemoveAnonymousVolumes bool `lua:"volumes"` // Also removes the anonymous volumes, default is false
 }
 
 // DownService is a service that runs the docker-compose down command

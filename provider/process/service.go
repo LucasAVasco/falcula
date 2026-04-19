@@ -9,6 +9,9 @@ import (
 	"github.com/LucasAVasco/falcula/service/iface"
 )
 
+// ServiceOpts is the base options for a process service
+type ServiceOpts = base.ServiceOpts
+
 // Service represents a process service
 type Service struct {
 	*base.Service

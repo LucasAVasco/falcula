@@ -5,6 +5,9 @@ import (
 	"github.com/LucasAVasco/falcula/provider/dockercompose/info"
 )
 
+// ServiceOpts is the base options for a docker-compose service
+type ServiceOpts = base.ServiceOpts
+
 // Service represents a generic docker-compose service
 type Service struct {
 	*base.Service

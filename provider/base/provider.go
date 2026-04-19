@@ -9,11 +9,16 @@ import (
 	"github.com/fatih/color"
 )
 
+// ProviderOpts is the options for a provider
+type ProviderOpts struct {
+	DefaultServiceOpts iface.Opts `lua:"service_opts"` // The default options for a service. If not provided, a default value will be used
+}
+
 // ProviderConfig is the configuration for a provider. It is required to create a provider
 type ProviderConfig struct {
-	Multiplexer        *multiplexer.Multiplexer
-	Name               string
-	DefaultServiceOpts iface.Opts // The default options for a service. If not provided, a default value will be used
+	Multiplexer *multiplexer.Multiplexer
+	Name        string
+	Opts        ProviderOpts // The options for the provider
 }
 
 // Provider represents a provider. Provides the basic data required by a provider. Any provider should inherit from this
@@ -45,7 +50,7 @@ func (p *Provider) NewService(name string, opts *ServiceOpts) *Service {
 		Multiplexer: p.Config.Multiplexer,
 		Color:       p.Color,
 		Name:        name,
-		Opts:        p.Config.DefaultServiceOpts,
+		Opts:        p.Config.Opts.DefaultServiceOpts,
 	}
 
 	return NewService(&config, opts)

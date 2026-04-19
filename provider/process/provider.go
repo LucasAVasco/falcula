@@ -11,6 +11,13 @@ type Command struct {
 	Command []string // Command and its arguments
 }
 
+// ProviderOpts is the options for a process provider
+type ProviderOpts = base.ProviderOpts
+
+// ProviderConfig is the configuration for a process provider
+type ProviderConfig = base.ProviderConfig
+
+// Provider is a provider to generate process services
 type Provider struct {
 	*base.Provider
 	prepareCmd *Command
@@ -19,7 +26,7 @@ type Provider struct {
 
 // New creates a new process provider. Generates the steps from the commands. If the command is nil, the step will do nothing (you can
 // disable a step by setting the command to nil)
-func New(config *base.ProviderConfig, prepareCmd *Command, mainCmd *Command) *Provider {
+func New(config *ProviderConfig, prepareCmd *Command, mainCmd *Command) *Provider {
 	return &Provider{
 		Provider:   base.NewProvider(config),
 		prepareCmd: prepareCmd,

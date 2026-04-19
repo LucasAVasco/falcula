@@ -13,14 +13,14 @@ import (
 
 // BuildInfo is the information to build the docker-compose images. Used to build all provided services to all provided platforms
 type BuildInfo struct {
-	ServicesNames []string
-	Platforms     []string
+	ServicesNames []string `lua:"services"`
+	Platforms     []string `lua:"platforms"`
 }
 
 type BuildServiceOpts struct {
-	base.ServiceOpts
-	NoPull bool         // Does not pull images, only builds
-	Builds []*BuildInfo // Builds
+	base.ServiceOpts `lua:",inline"`
+	NoPull           bool         `lua:"no_pull"` // Does not pull images, only builds
+	Builds           []*BuildInfo `lua:"builds"`  // Builds
 }
 
 // BuildService is a service that pulls and builds the docker-compose images.

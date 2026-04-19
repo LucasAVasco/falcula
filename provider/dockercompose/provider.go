@@ -7,17 +7,39 @@ import (
 	"github.com/LucasAVasco/falcula/service/iface"
 )
 
+// ProviderOpts is the options for a docker-compose provider
+type ProviderOpts struct {
+	base.ProviderOpts `lua:",inline"`
+	PushImages        []string `lua:"push_images"` // Default images to push
+}
+
+// ProviderConfig is the configuration for a docker-compose provider.
+//
+// The base provider configuration will be replaced by the provider options provided in the `Opts` field, so you should not use
+// `ProviderConfig.Opts` directly
+type ProviderConfig struct {
+	base.ProviderConfig
+	Opts ProviderOpts // Overrides the base provider options
+}
+
 // Provider is a docker-compose service provider (generate docker-compose services)
 type Provider struct {
 	*base.Provider
 	info *info.DockerComposeInfo
 }
 
-func New(config *base.ProviderConfig, composeFile string) *Provider {
-	return &Provider{
-		Provider: base.NewProvider(config),
+func New(config *ProviderConfig, composeFile string) *Provider {
+	// Updates the provider configuration with the provider options
+	config.ProviderConfig.Opts = config.Opts.ProviderOpts
+
+	p := Provider{
+		Provider: base.NewProvider(&config.ProviderConfig),
 		info:     info.NewComposeInfo(composeFile),
 	}
+
+	p.AddDefaultPushImages(config.Opts.PushImages)
+
+	return &p
 }
 
 func (p *Provider) NewService(name string, opts *base.ServiceOpts) *Service {
