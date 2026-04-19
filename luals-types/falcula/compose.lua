@@ -5,6 +5,7 @@ local M = {}
 
 ---@class (exact) FalculaComposeOpts: FalculaServiceProviderOpts Docker/Podman compose service.
 ---@field push_images? string[] List of images that the 'Push' service will push.
+---@field service_opts? FalculaServiceServiceOpts Default options for the generated services.
 
 ---@class FalculaComposeProvider Service provider for Docker/Podman compose service.
 M.Provider = {}
