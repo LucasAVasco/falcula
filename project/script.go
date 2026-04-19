@@ -8,6 +8,7 @@ import (
 // Script is a falcula script. It can be either a shell command, a shell file, Lua code or a Lua file (can not be more than one of them)
 type Script struct {
 	Project *Config `yaml:"-"`
+	Cwd     string  `yaml:"cwd"`
 	Command Command `yaml:"command"`
 	Lua     string  `yaml:"lua"`
 	File    string  `yaml:"file"`
@@ -16,7 +17,18 @@ type Script struct {
 
 // ConvertToAbsPath converts the paths of the script to absolute paths
 func (s *Script) ConvertToAbsPath(folder string) error {
+	if s.Cwd == "" {
+		s.Cwd = folder
+	}
+
 	var err error
+	if !filepath.IsAbs(s.Cwd) {
+		s.Cwd, err = filepath.Abs(filepath.Join(folder, s.Cwd))
+		if err != nil {
+			return fmt.Errorf("error getting absolute path of CWD: %w", err)
+		}
+	}
+
 	if s.File != "" && !filepath.IsAbs(s.File) {
 		s.File, err = filepath.Abs(filepath.Join(folder, s.File))
 		if err != nil {

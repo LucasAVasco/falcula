@@ -25,16 +25,16 @@ func (a *App) RunScript(scriptName string, args ...string) error {
 	// modtui does not closes the TUI when it is closed. The TUI is persistent across runs. Need to close it manually
 	defer modtui.ClosePersistentTui()
 
-	// Changes to project directory
-	err = os.Chdir(a.project.Folder)
-	if err != nil {
-		return fmt.Errorf("error changing to project directory: %w", err)
-	}
-
 	// Script to run
 	script, err := a.project.GetScriptByName(scriptName)
 	if err != nil {
 		return fmt.Errorf("error getting script to run: %w", err)
+	}
+
+	// Changes to script directory
+	err = os.Chdir(script.Cwd)
+	if err != nil {
+		return fmt.Errorf("error changing to script working directory: %w", err)
 	}
 
 	configureCmd := func(cmd *exec.Cmd) {
