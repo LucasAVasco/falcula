@@ -20,8 +20,8 @@ Falcula.
 
 Some Falcula modules require optional dependencies. You need to install them before using the corresponding module.
 
-- 'falcula.docker-compose' depends on [Docker](https://www.docker.com/). This module use the native docker CLI to run docker-compose
-  (`docker compose` command) instead of the `docker-compose` binary. The 'falcula.compose' is a alias for the 'falcula.docker-compose'
+- 'falcula.docker.compose' depends on [Docker](https://www.docker.com/). This module use the native docker CLI to run docker-compose
+  (`docker compose` command) instead of the `docker-compose` binary. The 'falcula.compose' is a alias for the 'falcula.docker.compose'
   module.
 
 ## Usage
