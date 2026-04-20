@@ -4,10 +4,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"time"
 
 	"github.com/LucasAVasco/falcula/lua/luaruntime"
-	"github.com/LucasAVasco/falcula/lua/modules"
 	"github.com/LucasAVasco/falcula/lua/modules/modtui"
 	"github.com/LucasAVasco/falcula/process"
 )
@@ -37,16 +35,6 @@ func (a *App) RunScript(scriptName string, args ...string) error {
 		return fmt.Errorf("error changing to script working directory: %w", err)
 	}
 
-	configureCmd := func(cmd *exec.Cmd) {
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		cmd.Stdin = os.Stdin
-
-		cmd.Env = os.Environ()
-		cmd.Env = append(cmd.Env, "FALCULA_PROJECT_DIR="+a.project.Folder)
-		cmd.Env = append(cmd.Env, "FALCULA_INVOKE_DIR="+a.invokeDir)
-	}
-
 	if script.Command.IsNotEmpty() {
 		var cmd *exec.Cmd
 		if script.Command.List != nil {
@@ -54,7 +42,7 @@ func (a *App) RunScript(scriptName string, args ...string) error {
 		} else {
 			cmd = process.CreateCmd(true, script.Command.String)
 		}
-		configureCmd(cmd)
+		a.configureCmd(cmd, script.Project.Folder)
 
 		err := cmd.Run()
 		if err != nil {
@@ -62,39 +50,20 @@ func (a *App) RunScript(scriptName string, args ...string) error {
 		}
 
 	} else if script.Lua != "" {
-		// Runs the main script. Repeats the script if the user selects new arguments
-		var loader *modules.Loader
-
-		// Loding modules
-		loader, err = modules.LoadAllModules(runtime, &modules.AllModulesLoaderOptions{
-			RawMode:      a.rawMode,
-			OnSelectArgs: func(newArgs []string) {},
-		})
-		if err != nil {
-			runtime.Logger.LogError(fmt.Errorf("error loading modules: %w", err))
-			return nil
-		}
-		defer loader.Close()
-
-		// Running the script
-		err = runtime.Run(script.Lua, args...)
-		if err != nil {
-			runtime.Logger.LogError(fmt.Errorf("error running script Lua code: %w", err))
+		config := &runLuaConfig{
+			Runtime: runtime,
+			Code:    script.Lua,
+			Args:    args,
 		}
 
-		// Wait until the TUI is closed or the user selects new arguments
-		for {
-			if modtui.TuiIsVisible() {
-				time.Sleep(100 * time.Millisecond)
-				continue
-			}
-
-			break
+		err := a.runLuaCode(config)
+		if err != nil {
+			return fmt.Errorf("error running Lua code: %w", err)
 		}
 
 	} else if script.File != "" {
 		cmd := process.CreateCmd(false, script.File)
-		configureCmd(cmd)
+		a.configureCmd(cmd, script.Project.Folder)
 
 		err := cmd.Run()
 		if err != nil {
@@ -102,57 +71,15 @@ func (a *App) RunScript(scriptName string, args ...string) error {
 		}
 
 	} else if script.LuaFile != "" {
-		scriptToRun := script.LuaFile
+		config := &runLuaConfig{
+			Runtime: runtime,
+			File:    script.LuaFile,
+			Args:    args,
+		}
 
-		// Runs the main script. Repeats the script if the user selects new arguments
-		for {
-			reRunScript := false
-			var loader *modules.Loader
-
-			// Loding modules
-			loader, err = modules.LoadAllModules(runtime, &modules.AllModulesLoaderOptions{
-				RawMode: a.rawMode,
-				OnSelectArgs: func(newArgs []string) {
-					reRunScript = true
-					scriptToRun = runtime.GetLastExecutedFile()
-					args = newArgs
-
-					err := loader.Close()
-					if err != nil {
-						runtime.Logger.LogError(fmt.Errorf("error closing Lua modules loader: %w", err))
-						runtime.CloseLuaState()
-						return
-					}
-
-					runtime.ResetLuaState()
-				},
-			})
-			if err != nil {
-				runtime.Logger.LogError(fmt.Errorf("error loading modules: %w", err))
-				continue // Must not run the script if the modules are not loaded
-			}
-			defer loader.Close()
-
-			// Running the script
-			err = runtime.RunFile(scriptToRun, args...)
-			if err != nil {
-				runtime.Logger.LogError(fmt.Errorf("error running script '%s': %w", scriptToRun, err))
-			}
-
-			// Wait until the TUI is closed or the user selects new arguments
-			for {
-				if !reRunScript && modtui.TuiIsVisible() {
-					time.Sleep(100 * time.Millisecond)
-					continue
-				}
-
-				break
-			}
-
-			// Exit if the user closed the TUI without selecting new arguments
-			if !reRunScript {
-				break
-			}
+		err := a.runLuaFile(config)
+		if err != nil {
+			return fmt.Errorf("error running Lua file: %w", err)
 		}
 
 	} else {

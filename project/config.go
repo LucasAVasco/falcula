@@ -19,6 +19,8 @@ type Config struct {
 	Root           bool               `yaml:"root"`
 	Scripts        map[string]*Script `yaml:"scripts"`
 	FallbackScript string             `yaml:"fallback_script"`
+	Tasks          map[string]*Task   `yaml:"tasks"`
+	FallbackTask   string             `yaml:"fallback_task"`
 }
 
 // ReadConfigFile reads the project configuration file and parses it
@@ -49,11 +51,28 @@ func ReadConfigFile(path string) (*Config, error) {
 		}
 	}
 
+	// Configuring tasks
+	for _, task := range c.Tasks {
+		task.Project = &c
+		err := task.ConvertToAbsPath(c.Folder)
+		if err != nil {
+			return nil, fmt.Errorf("error converting task '%s' to absolute path: %w", task.File, err)
+		}
+	}
+
 	// Validates the scripts
 	for name, script := range c.Scripts {
 		err = script.Validate()
 		if err != nil {
 			return nil, fmt.Errorf("error validating script '%s': %w", name, err)
+		}
+	}
+
+	// Validates the tasks
+	for name, task := range c.Tasks {
+		err = task.Validate()
+		if err != nil {
+			return nil, fmt.Errorf("error validating task '%s': %w", name, err)
 		}
 	}
 
@@ -161,4 +180,49 @@ func (c *Config) GetScriptByName(name string) (*Script, error) {
 	}
 
 	return script, nil
+}
+
+// getTaskRelativeToProject returns the task with the given name relative to the project folder
+func (c *Config) getTaskRelativeToProject(name string) *Task {
+	task, ok := c.Tasks[name]
+	if ok {
+		return task
+	}
+
+	// Uses fallback task if can not find a task with the given name
+	task, ok = c.Tasks[c.FallbackTask]
+	if ok {
+		return task
+	}
+
+	return nil
+}
+
+// GetTaskByName returns the task with the given name. If the task is not found, it returns the fallback task. If there is no
+// fallback task, returns an error
+func (c *Config) GetTaskByName(name string) (*Task, error) {
+	projectName, scriptName := c.extractProjectName(name)
+
+	// Gets the task in the current project
+	if projectName == "" {
+		task := c.getTaskRelativeToProject(name)
+		if task == nil {
+			return nil, fmt.Errorf("task '%s' not found", name)
+		}
+
+		return task, nil
+	}
+
+	// Gets the task in a child project
+	project, err := c.GetChildProjectByName(projectName)
+	if err != nil {
+		return nil, fmt.Errorf("error getting child project '%s': %w", projectName, err)
+	}
+
+	task, err := project.GetTaskByName(scriptName)
+	if err != nil {
+		return nil, fmt.Errorf("error getting task '%s' from project '%s': %w", scriptName, projectName, err)
+	}
+
+	return task, nil
 }
