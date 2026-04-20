@@ -34,7 +34,7 @@ falcula script run innerProject1:innerProject2:scriptName arg1 arg2`,
 			return fmt.Errorf("error creating falcula app: %w", err)
 		}
 
-		err = app.RunScript(args[0], args...)
+		err = app.RunScript(args[0], args[1:]...)
 		if err != nil {
 			return fmt.Errorf("error running script: %w", err)
 		}

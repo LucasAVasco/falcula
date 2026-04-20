@@ -43,7 +43,7 @@ falcula task run innerProject1:innerProject2:taskName arg1 arg2`,
 			return fmt.Errorf("error creating falcula app: %w", err)
 		}
 
-		err = app.RunTask(args[0], args...)
+		err = app.RunTask(args[0], args[1:]...)
 		if err != nil {
 			return fmt.Errorf("error running task: %w", err)
 		}
