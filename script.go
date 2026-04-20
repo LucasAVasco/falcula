@@ -44,9 +44,13 @@ func (a *App) RunScript(scriptName string, args ...string) error {
 	if script.Command.IsNotEmpty() {
 		var cmd *exec.Cmd
 		if script.Command.List != nil {
-			cmd = process.CreateCmd(false, script.Command.List[0], script.Command.List[1:]...)
+			cmdArgs := script.Command.List[1:]
+			cmdArgs = append(cmdArgs, args...)
+			cmd = process.CreateCmd(false, script.Command.List[0], cmdArgs...)
 		} else {
-			cmd = process.CreateCmd(true, script.Command.String)
+			cmdArgs := []string{"sh"}
+			cmdArgs = append(cmdArgs, args...)
+			cmd = process.CreateCmd(true, script.Command.String, cmdArgs...)
 		}
 		a.configureCmd(cmd, script.Project.Folder)
 
@@ -68,7 +72,7 @@ func (a *App) RunScript(scriptName string, args ...string) error {
 		}
 
 	} else if script.File != "" {
-		cmd := process.CreateCmd(false, script.File)
+		cmd := process.CreateCmd(false, script.File, args...)
 		a.configureCmd(cmd, script.Project.Folder)
 
 		err := cmd.Run()
