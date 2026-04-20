@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strings"
 	"sync"
 
 	"github.com/LucasAVasco/falcula/colorgen"
@@ -42,16 +41,16 @@ type Options struct {
 // CreateCmd creates a new `exec.Cmd` with supported to run it in a shell (if `shell` is true)
 func CreateCmd(shell bool, command string, args ...string) *exec.Cmd {
 	if shell {
-		if len(args) > 0 {
-			command = command + " " + strings.Join(args, " ")
-		}
 		shellBaseCommand := getShellBaseCommand()
-		cmdName := shellBaseCommand[0]
-		cmdArgs := append(shellBaseCommand[1:], command)
-		return exec.Command(cmdName, cmdArgs...)
-	} else {
-		return exec.Command(command, args...)
+		newCommand := shellBaseCommand[0]
+		newArgs := []string{shellBaseCommand[1], command}
+		newArgs = append(newArgs, args...)
+
+		command = newCommand
+		args = newArgs
 	}
+
+	return exec.Command(command, args...)
 }
 
 func New(opts *Options, command string, args ...string) (*Process, error) {
