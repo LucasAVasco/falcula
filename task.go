@@ -9,8 +9,14 @@ import (
 	"github.com/LucasAVasco/falcula/lua/luaruntime"
 	"github.com/LucasAVasco/falcula/lua/modules/modtui"
 	"github.com/LucasAVasco/falcula/process"
+	"github.com/LucasAVasco/falcula/project"
 	lua "github.com/yuin/gopher-lua"
 )
+
+// GetTaskList returns all the tasks in the current project and its children projects
+func (a *App) GetTaskList() (map[string]*project.Task, error) {
+	return a.project.GetAllTasks()
+}
 
 // RunTask runs a task of the current project with the given arguments. The taskName can be the name of a named task or the path to
 // a task

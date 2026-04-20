@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"fmt"
+
+	"github.com/LucasAVasco/falcula"
 	"github.com/spf13/cobra"
 )
 
@@ -25,4 +28,19 @@ func Execute() {
 
 func init() {
 	rootCmd.PersistentFlags().Bool("raw", false, "Run in raw mode (disables TUI)")
+}
+
+// createFalculaApp create a new falcula application
+func createFalculaApp(cmd *cobra.Command) (*falcula.App, error) {
+	rawMode, err := cmd.Flags().GetBool("raw")
+	if err != nil {
+		return nil, fmt.Errorf("error getting value of 'raw' flag: %w", err)
+	}
+
+	app, err := falcula.NewApp(rawMode)
+	if err != nil {
+		return nil, fmt.Errorf("error creating app: %w", err)
+	}
+
+	return app, nil
 }

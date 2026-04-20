@@ -8,7 +8,13 @@ import (
 	"github.com/LucasAVasco/falcula/lua/luaruntime"
 	"github.com/LucasAVasco/falcula/lua/modules/modtui"
 	"github.com/LucasAVasco/falcula/process"
+	"github.com/LucasAVasco/falcula/project"
 )
+
+// GetScriptList returns all the scripts in the current project and its children projects
+func (a *App) GetScriptList() (map[string]*project.Script, error) {
+	return a.project.GetAllScripts()
+}
 
 // RunScript runs a script of the current project with the given arguments. The scriptName can be the name of a named script or the path to
 // a script

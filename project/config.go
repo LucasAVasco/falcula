@@ -3,6 +3,7 @@ package project
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -182,6 +183,30 @@ func (c *Config) GetScriptByName(name string) (*Script, error) {
 	return script, nil
 }
 
+// GetAllScripts returns all the scripts in the current project and its children projects as a map
+func (c *Config) GetAllScripts() (map[string]*Script, error) {
+	scripts := make(map[string]*Script)
+	maps.Copy(scripts, c.Scripts)
+
+	// Adds scripts from children projects
+	for projectName, projectPath := range c.Projects {
+		project, err := ReadConfigFile(projectPath + "/" + ProjectFileName)
+		if err != nil {
+			return nil, fmt.Errorf("error reading configuration file of project '%s' at path '%s': %v", projectName, projectPath, err)
+		}
+		subScripts, err := project.GetAllScripts()
+		if err != nil {
+			return nil, fmt.Errorf("error getting scripts from child project '%s': %w", projectName, err)
+		}
+
+		for name, script := range subScripts {
+			scripts[projectName+":"+name] = script
+		}
+	}
+
+	return scripts, nil
+}
+
 // getTaskRelativeToProject returns the task with the given name relative to the project folder
 func (c *Config) getTaskRelativeToProject(name string) *Task {
 	task, ok := c.Tasks[name]
@@ -225,4 +250,29 @@ func (c *Config) GetTaskByName(name string) (*Task, error) {
 	}
 
 	return task, nil
+}
+
+// GetAllTasks returns all the tasks in the current project and its children projects as a map
+func (c *Config) GetAllTasks() (map[string]*Task, error) {
+	tasks := make(map[string]*Task)
+	maps.Copy(tasks, c.Tasks)
+
+	// Adds tasks from children projects
+	for projectName, projectPath := range c.Projects {
+		project, err := ReadConfigFile(projectPath + "/" + ProjectFileName)
+		if err != nil {
+			return nil, fmt.Errorf("error reading configuration file of project '%s' at path '%s': %v", projectName, projectPath, err)
+		}
+
+		subTasks, err := project.GetAllTasks()
+		if err != nil {
+			return nil, fmt.Errorf("error getting tasks from child project '%s': %w", projectName, err)
+		}
+
+		for name, task := range subTasks {
+			tasks[projectName+":"+name] = task
+		}
+	}
+
+	return tasks, nil
 }
