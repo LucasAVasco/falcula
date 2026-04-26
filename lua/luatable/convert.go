@@ -15,12 +15,27 @@ func GetValuesFromLuaTable(table *lua.LTable) []lua.LValue {
 
 // GetStringsFromLuaTable returns all values from the (key, value) pairs of a Lua table as strings
 func GetStringsFromLuaTable(table *lua.LTable) []string {
-	strs := make([]string, 0, table.Len())
+	result := make([]string, 0, table.Len())
 	table.ForEach(func(key lua.LValue, value lua.LValue) {
-		strs = append(strs, value.(lua.LString).String())
+		result = append(result, value.(lua.LString).String())
 	})
 
-	return strs
+	return result
+}
+
+// GetStringsFromLuaTableThatKeyIsNumber returns all values from the (key, value) pairs of a Lua table as strings where the key is a number.
+// If the key is not a number, then it is ignored
+func GetStringsFromLuaTableThatKeyIsNumber(table *lua.LTable) []string {
+	result := make([]string, 0, table.Len())
+	table.ForEach(func(key lua.LValue, value lua.LValue) {
+		if key.Type() != lua.LTNumber {
+			return
+		}
+
+		result = append(result, value.(lua.LString).String())
+	})
+
+	return result
 }
 
 // GetLuaTableFromValues returns a Lua table from a slice of Lua values

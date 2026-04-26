@@ -7,6 +7,7 @@ import (
 
 // Command command to run
 type Command struct {
+	Dir     string   // Working directory. If empty, the current working directory will be used
 	Shell   bool     // true to run the command in a shell
 	Command []string // Command and its arguments
 }

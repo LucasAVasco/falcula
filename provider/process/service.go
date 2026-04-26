@@ -26,6 +26,7 @@ func (s *Service) Prepare(callback iface.OnExitCallback) (iface.Step, error) {
 	}
 
 	procOpts := s.NewProcessOptions()
+	procOpts.Dir = s.prepareCmd.Dir
 	procOpts.Shell = s.prepareCmd.Shell
 	procOpts.OnExit = func(info *process.ExitInfo) { callback(info, nil) }
 
@@ -44,6 +45,7 @@ func (s *Service) Start(callback iface.OnExitCallback) (iface.Step, error) {
 	}
 
 	procOpts := s.NewProcessOptions()
+	procOpts.Dir = s.mainCmd.Dir
 	procOpts.Shell = s.mainCmd.Shell
 	procOpts.OnExit = func(info *process.ExitInfo) { callback(info, nil) }
 

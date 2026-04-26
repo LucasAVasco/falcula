@@ -27,6 +27,7 @@ type Process struct {
 }
 
 type Options struct {
+	Dir         string         // Working directory. If empty, the current working directory will be used
 	Shell       bool           // Run the command in a shell
 	Wait        bool           // The `New` command will wait for the process to end
 	ManualStart bool           // Does not start the process automatically
@@ -57,6 +58,11 @@ func New(opts *Options, command string, args ...string) (*Process, error) {
 	p := Process{
 		cmd:    CreateCmd(opts.Shell, command, args...),
 		onExit: opts.OnExit,
+	}
+
+	// Working directory
+	if opts.Dir != "" {
+		p.cmd.Dir = opts.Dir
 	}
 
 	// Environment variables

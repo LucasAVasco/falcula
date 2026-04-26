@@ -36,8 +36,13 @@ func getProcessCommandFromLuaValue(value lua.LValue) (*process.Command, error) {
 		command.Command = []string{value.(*lua.LString).String()}
 
 	case lua.LTTable:
+		value := value.(*lua.LTable)
 		command.Shell = false
-		command.Command = luatable.GetStringsFromLuaTable(value.(*lua.LTable))
+		command.Command = luatable.GetStringsFromLuaTableThatKeyIsNumber(value)
+
+		if dir := value.RawGetString("dir"); dir != lua.LNil {
+			command.Dir = dir.(lua.LString).String()
+		}
 
 	default:
 		return nil, fmt.Errorf("invalid command type: %T", value)
