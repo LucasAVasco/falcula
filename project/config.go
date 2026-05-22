@@ -11,10 +11,9 @@ import (
 	"github.com/goccy/go-yaml"
 )
 
-const ProjectFileName = "falcula.yaml"
-
 // Config is the project configuration
 type Config struct {
+	File           string             `yaml:"-"`
 	Folder         string             `yaml:"-"`
 	Projects       map[string]string  `yaml:"projects"`
 	Root           bool               `yaml:"root"`
@@ -24,14 +23,22 @@ type Config struct {
 	FallbackTask   string             `yaml:"fallback_task"`
 }
 
-// ReadConfigFile reads the project configuration file and parses it
-func ReadConfigFile(path string) (*Config, error) {
+// LoadProject reads the project configuration file and parses it
+func LoadProjectFile(file string) (*Config, error) {
 	c := Config{
 		Projects: make(map[string]string),
 		Scripts:  make(map[string]*Script),
 	}
 
-	fileContent, err := os.ReadFile(path)
+	// Getting absolute path of file and folder
+	file, err := filepath.Abs(file)
+	if err != nil {
+		return nil, fmt.Errorf("error getting absolute path of file '%s': %w", file, err)
+	}
+	folder := filepath.Dir(file)
+
+	// Reading configuration file
+	fileContent, err := os.ReadFile(file)
 	if err != nil {
 		return nil, fmt.Errorf("error reading configuration file: %w", err)
 	}
@@ -40,8 +47,8 @@ func ReadConfigFile(path string) (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error parsing configuration file: %w", err)
 	}
-
-	c.Folder = filepath.Dir(path)
+	c.File = file
+	c.Folder = folder
 
 	// Configuring scripts
 	for _, script := range c.Scripts {
@@ -80,6 +87,24 @@ func ReadConfigFile(path string) (*Config, error) {
 	return &c, nil
 }
 
+// LoadProject reads the first project configuration file in the given folder and loads it
+func LoadProject(folder string) (*Config, error) {
+	path, err := GetConfigFile(folder)
+	if err != nil {
+		return nil, fmt.Errorf("error getting project configuration file: %w", err)
+	}
+	if path == "" {
+		return nil, fmt.Errorf("project configuration file not found")
+	}
+
+	project, err := LoadProjectFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("error loading project configuration file: %w", err)
+	}
+
+	return project, nil
+}
+
 // GetChildProjectByName returns the child project with the given name or nil if not found
 func (c *Config) GetChildProjectByName(name string) (*Config, error) {
 	subProjectName, innerName, hasSubProjectName := strings.Cut(name, ":")
@@ -94,7 +119,7 @@ func (c *Config) GetChildProjectByName(name string) (*Config, error) {
 		projectPath = filepath.Join(c.Folder, projectPath)
 	}
 
-	project, err := ReadConfigFile(projectPath + "/" + ProjectFileName)
+	project, err := LoadProject(projectPath)
 	if err != nil {
 		return nil, fmt.Errorf("error reading child project configuration file '%s': %w", innerName, err)
 	}
@@ -190,7 +215,7 @@ func (c *Config) GetAllScripts() (map[string]*Script, error) {
 
 	// Adds scripts from children projects
 	for projectName, projectPath := range c.Projects {
-		project, err := ReadConfigFile(projectPath + "/" + ProjectFileName)
+		project, err := LoadProject(projectPath)
 		if err != nil {
 			return nil, fmt.Errorf("error reading configuration file of project '%s' at path '%s': %v", projectName, projectPath, err)
 		}
@@ -259,7 +284,7 @@ func (c *Config) GetAllTasks() (map[string]*Task, error) {
 
 	// Adds tasks from children projects
 	for projectName, projectPath := range c.Projects {
-		project, err := ReadConfigFile(projectPath + "/" + ProjectFileName)
+		project, err := LoadProject(projectPath)
 		if err != nil {
 			return nil, fmt.Errorf("error reading configuration file of project '%s' at path '%s': %v", projectName, projectPath, err)
 		}

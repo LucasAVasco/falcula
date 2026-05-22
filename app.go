@@ -2,7 +2,6 @@
 package falcula
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -37,12 +36,12 @@ func NewApp(rawMode bool) (*App, error) {
 	a.invokeDir = invokeDir
 
 	// Project
-	projectFile, err := getProjectFilePath()
+	projectDir, err := getProjectDir()
 	if err != nil {
 		return nil, fmt.Errorf("error getting project file path: %w", err)
 	}
 
-	a.project, err = project.ReadConfigFile(projectFile)
+	a.project, err = project.LoadProject(projectDir)
 	if err != nil {
 		return nil, fmt.Errorf("error reading project file (falcula.yaml): %w", err)
 	}
@@ -50,8 +49,8 @@ func NewApp(rawMode bool) (*App, error) {
 	return a, nil
 }
 
-// getProjectFilePath returns the path to the falcula configuration file that the application should use
-func getProjectFilePath() (string, error) {
+// getProjectDir returns the path to the falcula configuration directory that the application should use
+func getProjectDir() (string, error) {
 	currentDir, err := os.Getwd()
 	if err != nil {
 		return "", fmt.Errorf("error getting current working directory: %w", err)
@@ -63,23 +62,23 @@ func getProjectFilePath() (string, error) {
 	}
 
 	// Iterate from the current directory to the root searching for a 'falcula.yaml' file
-	var projectFile string
 	for {
-		projectFile = currentDir + "/falcula.yaml"
-		_, err = os.Stat(projectFile)
-		if err == nil {
-			break
-		} else if !errors.Is(err, os.ErrNotExist) {
-			return "", fmt.Errorf("error checking if file '%s' exists: %w", projectFile, err)
+		hasConfigFile, err := project.HasConfigFile(currentDir)
+		if err != nil {
+			return "", fmt.Errorf("error checking if '%s' has a project configuration file: %w", currentDir, err)
 		}
 
+		// Found
+		if hasConfigFile {
+			return currentDir, nil
+		}
+
+		// At root (no project file found)
 		if currentDir == "/" {
-			return "", fmt.Errorf("project file 'falcula.yaml' not found")
+			return "", fmt.Errorf("project file not found")
 		}
 
 		// Next directory
 		currentDir = filepath.Dir(currentDir)
 	}
-
-	return projectFile, nil
 }
