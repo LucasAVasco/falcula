@@ -15,6 +15,7 @@ import (
 type Config struct {
 	File           string             `yaml:"-"`
 	Folder         string             `yaml:"-"`
+	Extends        []string           `yaml:"extends"`
 	Projects       map[string]string  `yaml:"projects"`
 	Root           bool               `yaml:"root"`
 	Scripts        map[string]*Script `yaml:"scripts"`
@@ -26,8 +27,10 @@ type Config struct {
 // LoadProject reads the project configuration file and parses it
 func LoadProjectFile(file string) (*Config, error) {
 	c := Config{
+		Extends:  make([]string, 0),
 		Projects: make(map[string]string),
 		Scripts:  make(map[string]*Script),
+		Tasks:    make(map[string]*Task),
 	}
 
 	// Getting absolute path of file and folder
@@ -84,7 +87,37 @@ func LoadProjectFile(file string) (*Config, error) {
 		}
 	}
 
+	// Extending configuration
+	for _, extendFile := range c.Extends {
+		if !filepath.IsAbs(extendFile) {
+			extendFile = filepath.Join(folder, extendFile)
+			extendFile, err = filepath.Abs(extendFile)
+			if err != nil {
+				return nil, fmt.Errorf("error getting absolute path of file '%s': %w", extendFile, err)
+			}
+		}
+		extend, err := LoadProjectFile(extendFile)
+		if err != nil {
+			return nil, fmt.Errorf("error loading project configuration file '%s': %w", extendFile, err)
+		}
+
+		mergeWithoutOverride(c.Projects, extend.Projects)
+		mergeWithoutOverride(c.Scripts, extend.Scripts)
+		mergeWithoutOverride(c.Tasks, extend.Tasks)
+	}
+
 	return &c, nil
+}
+
+// mergeWithoutOverride merges the given maps without overriding existing keys
+func mergeWithoutOverride[T any](dst, src map[string]T) {
+	for k, v := range src {
+		if _, ok := dst[k]; ok {
+			continue
+		}
+
+		dst[k] = v
+	}
 }
 
 // LoadProject reads the first project configuration file in the given folder and loads it
