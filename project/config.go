@@ -15,6 +15,7 @@ import (
 type Config struct {
 	File           string             `yaml:"-"`
 	Folder         string             `yaml:"-"`
+	Cwd            string             `yaml:"cwd"` // Current working directory used for scripts and tasks. Defaults to Folder
 	Extends        []string           `yaml:"extends"`
 	Projects       map[string]string  `yaml:"projects"`
 	Root           bool               `yaml:"root"`
@@ -46,17 +47,29 @@ func LoadProjectFile(file string) (*Config, error) {
 		return nil, fmt.Errorf("error reading configuration file: %w", err)
 	}
 
+	// Parsing configuration file
 	err = yaml.Unmarshal(fileContent, &c)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing configuration file: %w", err)
 	}
 	c.File = file
 	c.Folder = folder
+	if c.Cwd == "" {
+		c.Cwd = folder
+	}
+	if !filepath.IsAbs(c.Cwd) {
+		cwd := filepath.Join(folder, c.Cwd)
+		cwd, err = filepath.Abs(cwd)
+		if err != nil {
+			return nil, fmt.Errorf("error getting absolute path of CWD: %w", err)
+		}
+		c.Cwd = cwd
+	}
 
 	// Configuring scripts
 	for _, script := range c.Scripts {
 		script.Project = &c
-		err := script.ConvertToAbsPath(c.Folder)
+		err := script.ConvertToAbsPath(c.Cwd)
 		if err != nil {
 			return nil, fmt.Errorf("error converting script '%s' to absolute path: %w", script.File, err)
 		}
@@ -65,7 +78,7 @@ func LoadProjectFile(file string) (*Config, error) {
 	// Configuring tasks
 	for _, task := range c.Tasks {
 		task.Project = &c
-		err := task.ConvertToAbsPath(c.Folder)
+		err := task.ConvertToAbsPath(c.Cwd)
 		if err != nil {
 			return nil, fmt.Errorf("error converting task '%s' to absolute path: %w", task.File, err)
 		}
