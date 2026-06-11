@@ -5,6 +5,7 @@ go 1.25.2
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/fatih/color v1.18.0
+	github.com/fsnotify/fsnotify v1.10.1
 	github.com/gdamore/tcell/v2 v2.8.1
 	github.com/go-git/go-git/v6 v6.0.0-alpha.4
 	github.com/goccy/go-yaml v1.19.2

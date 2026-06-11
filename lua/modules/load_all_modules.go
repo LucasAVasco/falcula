@@ -6,6 +6,7 @@ import (
 	"github.com/LucasAVasco/falcula/lua/modules/modcmd"
 	"github.com/LucasAVasco/falcula/lua/modules/moddockercompose"
 	"github.com/LucasAVasco/falcula/lua/modules/modfalcula"
+	"github.com/LucasAVasco/falcula/lua/modules/modfs"
 	"github.com/LucasAVasco/falcula/lua/modules/modinspect"
 	"github.com/LucasAVasco/falcula/lua/modules/modjson"
 	"github.com/LucasAVasco/falcula/lua/modules/modmanager"
@@ -63,6 +64,7 @@ func (l *Loader) LoadAllModules(config *AllModulesLoaderOptions) error {
 	l.LoadModule("falcula.template", modtemplate.New())
 	l.LoadModule("falcula.path", modpath.New())
 	l.LoadModule("falcula.tui", tuiModule)
+	l.LoadModule("falcula.fs", modfs.New())
 
 	// Service providers modules
 	composeModule := moddockercompose.New()
