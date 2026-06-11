@@ -99,6 +99,17 @@ func Marshal(value any) (lua.LValue, error) {
 		return table, nil
 
 	case reflect.Struct:
+		// Lua function
+		if t == reflect.TypeOf(lua.LFunction{}) {
+			function, ok := v.Interface().(lua.LFunction)
+			if !ok {
+				return nil, fmt.Errorf("value is not of type lua.LFunction, it is %T", value)
+			}
+
+			return &function, nil
+		}
+
+		// Table
 		table, err := marshalStruct(t, v)
 		if err != nil {
 			return nil, fmt.Errorf("error marshaling struct: %w", err)

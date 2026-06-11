@@ -88,13 +88,19 @@ func Unmarshal(luaValue lua.LValue, dest any) error {
 		}
 
 	case reflect.Struct:
-		if luaValue.Type() != lua.LTTable {
-			return fmt.Errorf("Lua value is not a table")
-		}
+		switch luaValue.Type() {
+		case lua.LTFunction:
+			value := luaValue.(*lua.LFunction)
+			destValue.Set(reflect.ValueOf(*value))
 
-		err := unmarshalStruct(luaValue.(*lua.LTable), destType, destValue)
-		if err != nil {
-			return fmt.Errorf("error unmarshaling struct: %w", err)
+		case lua.LTTable:
+			err := unmarshalStruct(luaValue.(*lua.LTable), destType, destValue)
+			if err != nil {
+				return fmt.Errorf("error unmarshaling struct: %w", err)
+			}
+
+		default:
+			return fmt.Errorf("Lua value is not a table or function")
 		}
 
 	default:
