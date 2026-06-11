@@ -7,12 +7,12 @@ import (
 
 // Script is a falcula script. It can be either a shell command, a shell file, Lua code or a Lua file (can not be more than one of them)
 type Script struct {
-	Project *Config `yaml:"-"`
-	Cwd     string  `yaml:"cwd"`
-	Command Command `yaml:"command"`
-	Lua     string  `yaml:"lua"`
-	File    string  `yaml:"file"`
-	LuaFile string  `yaml:"lua_file"`
+	Project   *Config `yaml:"-"`
+	Cwd       string  `yaml:"cwd"`
+	Shell     Command `yaml:"shell"`
+	Lua       string  `yaml:"lua"`
+	ShellFile string  `yaml:"shell_file"`
+	LuaFile   string  `yaml:"lua_file"`
 }
 
 // ConvertToAbsPath converts the paths of the script to absolute paths
@@ -29,8 +29,8 @@ func (s *Script) ConvertToAbsPath(folder string) error {
 		}
 	}
 
-	if s.File != "" && !filepath.IsAbs(s.File) {
-		s.File, err = filepath.Abs(filepath.Join(folder, s.File))
+	if s.ShellFile != "" && !filepath.IsAbs(s.ShellFile) {
+		s.ShellFile, err = filepath.Abs(filepath.Join(folder, s.ShellFile))
 		if err != nil {
 			return fmt.Errorf("error getting absolute path of shell file: %w", err)
 		}
@@ -50,7 +50,7 @@ func (s *Script) ConvertToAbsPath(folder string) error {
 func (s *Script) Validate() error {
 	numActions := 0
 
-	if s.Command.IsNotEmpty() {
+	if s.Shell.IsNotEmpty() {
 		numActions++
 	}
 
@@ -58,7 +58,7 @@ func (s *Script) Validate() error {
 		numActions++
 	}
 
-	if s.File != "" {
+	if s.ShellFile != "" {
 		numActions++
 	}
 

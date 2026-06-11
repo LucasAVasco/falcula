@@ -45,27 +45,27 @@ func (a *App) RunTask(taskId string, args ...string) error {
 		return fmt.Errorf("error changing to task working directory: %w", err)
 	}
 
-	if task.Command.IsNotEmpty() {
-		if task.Command.List != nil {
-			cmdArgs := task.Command.List[1:]
+	if task.Shell.IsNotEmpty() {
+		if task.Shell.List != nil {
+			cmdArgs := task.Shell.List[1:]
 			cmdArgs = append(cmdArgs, args...)
-			cmd := process.CreateCmd(false, task.Command.List[0], cmdArgs...)
+			cmd := process.CreateCmd(false, task.Shell.List[0], cmdArgs...)
 			a.configureTaskCmd(cmd, task, taskId)
 
 			err := cmd.Run()
 			if err != nil {
-				return fmt.Errorf("error running task command: %w", err)
+				return fmt.Errorf("error running shell command: %w", err)
 			}
 
-		} else if task.Command.String != "" {
-			code := task.Command.String
+		} else if task.Shell.String != "" {
+			code := task.Shell.String
 			err := a.runTaskShellScript(task, taskId, code, args)
 			if err != nil {
-				return fmt.Errorf("error running task shell script: %w", err)
+				return fmt.Errorf("error running shell script: %w", err)
 			}
 
 		} else {
-			return fmt.Errorf("command is empty")
+			return fmt.Errorf("shell is empty")
 		}
 
 	} else if task.Lua != "" {
@@ -87,8 +87,8 @@ func (a *App) RunTask(taskId string, args ...string) error {
 			return fmt.Errorf("error running Lua code: %w", err)
 		}
 
-	} else if task.File != "" {
-		code := "source " + task.File
+	} else if task.ShellFile != "" {
+		code := "source " + task.ShellFile
 
 		err := a.runTaskShellScript(task, taskId, code, args)
 		if err != nil {

@@ -79,7 +79,7 @@ func LoadProjectFile(file string) (*Config, error) {
 		script.Project = &c
 		err := script.ConvertToAbsPath(c.Cwd)
 		if err != nil {
-			return nil, fmt.Errorf("error converting script '%s' to absolute path: %w", script.File, err)
+			return nil, fmt.Errorf("error converting script '%s' to absolute path: %w", script.ShellFile, err)
 		}
 	}
 
@@ -88,7 +88,7 @@ func LoadProjectFile(file string) (*Config, error) {
 		task.Project = &c
 		err := task.ConvertToAbsPath(c.Cwd)
 		if err != nil {
-			return nil, fmt.Errorf("error converting task '%s' to absolute path: %w", task.File, err)
+			return nil, fmt.Errorf("error converting task '%s' to absolute path: %w", task.ShellFile, err)
 		}
 	}
 
@@ -210,7 +210,7 @@ func (c *Config) getScriptRelativeToProject(name string) *Script {
 		}
 	} else {
 		script = &Script{
-			File: name,
+			ShellFile: name,
 		}
 	}
 

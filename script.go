@@ -41,22 +41,22 @@ func (a *App) RunScript(scriptName string, args ...string) error {
 		return fmt.Errorf("error changing to script working directory: %w", err)
 	}
 
-	if script.Command.IsNotEmpty() {
+	if script.Shell.IsNotEmpty() {
 		var cmd *exec.Cmd
-		if script.Command.List != nil {
-			cmdArgs := script.Command.List[1:]
+		if script.Shell.List != nil {
+			cmdArgs := script.Shell.List[1:]
 			cmdArgs = append(cmdArgs, args...)
-			cmd = process.CreateCmd(false, script.Command.List[0], cmdArgs...)
+			cmd = process.CreateCmd(false, script.Shell.List[0], cmdArgs...)
 		} else {
 			cmdArgs := []string{"sh"}
 			cmdArgs = append(cmdArgs, args...)
-			cmd = process.CreateCmd(true, script.Command.String, cmdArgs...)
+			cmd = process.CreateCmd(true, script.Shell.String, cmdArgs...)
 		}
 		a.configureCmd(cmd, script.Project.Folder)
 
 		err := cmd.Run()
 		if err != nil {
-			return fmt.Errorf("error running command: %w", err)
+			return fmt.Errorf("error running shell command: %w", err)
 		}
 
 	} else if script.Lua != "" {
@@ -71,13 +71,13 @@ func (a *App) RunScript(scriptName string, args ...string) error {
 			return fmt.Errorf("error running Lua code: %w", err)
 		}
 
-	} else if script.File != "" {
-		cmd := process.CreateCmd(false, script.File, args...)
+	} else if script.ShellFile != "" {
+		cmd := process.CreateCmd(false, script.ShellFile, args...)
 		a.configureCmd(cmd, script.Project.Folder)
 
 		err := cmd.Run()
 		if err != nil {
-			return fmt.Errorf("error running command: %w", err)
+			return fmt.Errorf("error running shell script: %w", err)
 		}
 
 	} else if script.LuaFile != "" {
