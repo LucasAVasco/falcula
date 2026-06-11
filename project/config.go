@@ -66,6 +66,14 @@ func LoadProjectFile(file string) (*Config, error) {
 		c.Cwd = cwd
 	}
 
+	// Configuring projects
+	for name, path := range c.Projects {
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(folder, path)
+		}
+		c.Projects[name] = path
+	}
+
 	// Configuring scripts
 	for _, script := range c.Scripts {
 		script.Project = &c
