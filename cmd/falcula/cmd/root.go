@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/LucasAVasco/falcula"
 	"github.com/spf13/cobra"
@@ -15,6 +16,8 @@ var rootCmd = &cobra.Command{
 
 It works by running a Lua script in the background and providing a TUI (optional) to control it.
 Falcula exposes a set of Lua modules to create and manage services and containers.`,
+
+	SilenceUsage: true,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -22,7 +25,7 @@ Falcula exposes a set of Lua modules to create and manage services and container
 func Execute() {
 	err := rootCmd.Execute()
 	if err != nil {
-		panic(err)
+		os.Exit(1)
 	}
 }
 
