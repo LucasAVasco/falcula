@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/LucasAVasco/falcula/version"
 	"github.com/goccy/go-yaml"
 )
 
@@ -15,6 +16,7 @@ import (
 type Config struct {
 	File           string             `yaml:"-"`
 	Folder         string             `yaml:"-"`
+	MinimumVersion string             `yaml:"minimum_version"`
 	Cwd            string             `yaml:"cwd"` // Current working directory used for scripts and tasks. Defaults to Folder
 	Extends        []string           `yaml:"extends"`
 	Projects       map[string]string  `yaml:"projects"`
@@ -52,6 +54,24 @@ func LoadProjectFile(file string) (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error parsing configuration file: %w", err)
 	}
+
+	// Validating minimum version
+	if c.MinimumVersion != "" {
+		minVersion, err := version.FromString(c.MinimumVersion)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing minimum version: %w", err)
+		}
+
+		if version.CurrentVersion != nil && minVersion.Compare(version.CurrentVersion) > 0 {
+			return nil, fmt.Errorf(
+				"minimum version (%s) is greater than current version (%s), you must update falcula to run this project",
+				c.MinimumVersion,
+				version.CurrentVersionString,
+			)
+		}
+	}
+
+	// Configuring paths after parsing
 	c.File = file
 	c.Folder = folder
 	if c.Cwd == "" {
