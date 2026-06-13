@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/LucasAVasco/falcula"
+	"github.com/LucasAVasco/falcula/version"
 	"github.com/spf13/cobra"
 )
 
@@ -23,6 +24,12 @@ Falcula exposes a set of Lua modules to create and manage services and container
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
+	if version.CurrentVersionString != "" {
+		rootCmd.Version = version.CurrentVersionString
+	} else {
+		rootCmd.Version = "unknown"
+	}
+
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
