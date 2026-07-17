@@ -12,8 +12,8 @@ import (
 	"github.com/goccy/go-yaml"
 )
 
-// Config is the project configuration
-type Config struct {
+// Project is the project configuration
+type Project struct {
 	File           string             `yaml:"-"`
 	Folder         string             `yaml:"-"`
 	MinimumVersion string             `yaml:"minimum_version"`
@@ -28,8 +28,8 @@ type Config struct {
 }
 
 // LoadProject reads the project configuration file and parses it
-func LoadProjectFile(file string) (*Config, error) {
-	c := Config{
+func LoadProjectFile(file string) (*Project, error) {
+	c := Project{
 		Extends:  make([]string, 0),
 		Projects: make(map[string]string),
 		Scripts:  make(map[string]*Script),
@@ -162,7 +162,7 @@ func mergeWithoutOverride[T any](dst, src map[string]T) {
 }
 
 // LoadProject reads the first project configuration file in the given folder and loads it
-func LoadProject(folder string) (*Config, error) {
+func LoadProject(folder string) (*Project, error) {
 	path, err := GetConfigFile(folder)
 	if err != nil {
 		return nil, fmt.Errorf("error getting project configuration file: %w", err)
@@ -180,17 +180,17 @@ func LoadProject(folder string) (*Config, error) {
 }
 
 // GetChildProjectByName returns the child project with the given name or nil if not found
-func (c *Config) GetChildProjectByName(name string) (*Config, error) {
+func (p *Project) GetChildProjectByName(name string) (*Project, error) {
 	subProjectName, innerName, hasSubProjectName := strings.Cut(name, ":")
 
 	// Gets first inner project
-	projectPath, ok := c.Projects[subProjectName]
+	projectPath, ok := p.Projects[subProjectName]
 	if !ok {
 		return nil, fmt.Errorf("project '%s' not found", subProjectName)
 	}
 
 	if !filepath.IsAbs(projectPath) {
-		projectPath = filepath.Join(c.Folder, projectPath)
+		projectPath = filepath.Join(p.Folder, projectPath)
 	}
 
 	project, err := LoadProject(projectPath)
@@ -211,14 +211,14 @@ func (c *Config) GetChildProjectByName(name string) (*Config, error) {
 }
 
 // getScriptRelativeToProject returns the script with the given name relative to the project folder
-func (c *Config) getScriptRelativeToProject(name string) *Script {
-	script, ok := c.Scripts[name]
+func (p *Project) getScriptRelativeToProject(name string) *Script {
+	script, ok := p.Scripts[name]
 	if ok {
 		return script
 	}
 
 	// Uses fallback script if can not find a script with the given name
-	script, ok = c.Scripts[c.FallbackScript]
+	script, ok = p.Scripts[p.FallbackScript]
 	if ok {
 		return script
 	}
@@ -241,7 +241,7 @@ func (c *Config) getScriptRelativeToProject(name string) *Script {
 // project name). Example: "project1:project2:script" -> "project1:project2", "script".
 //
 // If there is no project name, returns: "", name
-func (c *Config) extractProjectName(name string) (projectName string, rest string) {
+func (p *Project) extractProjectName(name string) (projectName string, rest string) {
 	lastProjectSeparatorIndex := strings.LastIndex(name, ":")
 	if lastProjectSeparatorIndex == -1 {
 		return "", name
@@ -255,12 +255,12 @@ func (c *Config) extractProjectName(name string) (projectName string, rest strin
 
 // GetScriptByName returns the script with the given name. If the script is not found, it returns the fallback script. If there is no
 // fallback script, it treats the name as a script path
-func (c *Config) GetScriptByName(name string) (*Script, error) {
-	projectName, scriptName := c.extractProjectName(name)
+func (p *Project) GetScriptByName(name string) (*Script, error) {
+	projectName, scriptName := p.extractProjectName(name)
 
 	// Gets the script in the current project
 	if projectName == "" {
-		script := c.getScriptRelativeToProject(name)
+		script := p.getScriptRelativeToProject(name)
 		if script == nil {
 			return nil, fmt.Errorf("script '%s' not found", name)
 		}
@@ -269,7 +269,7 @@ func (c *Config) GetScriptByName(name string) (*Script, error) {
 	}
 
 	// Gets the script in a child project
-	project, err := c.GetChildProjectByName(projectName)
+	project, err := p.GetChildProjectByName(projectName)
 	if err != nil {
 		return nil, fmt.Errorf("error getting child project '%s': %w", projectName, err)
 	}
@@ -283,12 +283,12 @@ func (c *Config) GetScriptByName(name string) (*Script, error) {
 }
 
 // GetAllScripts returns all the scripts in the current project and its children projects as a map
-func (c *Config) GetAllScripts() (map[string]*Script, error) {
+func (p *Project) GetAllScripts() (map[string]*Script, error) {
 	scripts := make(map[string]*Script)
-	maps.Copy(scripts, c.Scripts)
+	maps.Copy(scripts, p.Scripts)
 
 	// Adds scripts from children projects
-	for projectName, projectPath := range c.Projects {
+	for projectName, projectPath := range p.Projects {
 		project, err := LoadProject(projectPath)
 		if err != nil {
 			return nil, fmt.Errorf("error reading configuration file of project '%s' at path '%s': %v", projectName, projectPath, err)
@@ -307,14 +307,14 @@ func (c *Config) GetAllScripts() (map[string]*Script, error) {
 }
 
 // getTaskRelativeToProject returns the task with the given name relative to the project folder
-func (c *Config) getTaskRelativeToProject(name string) *Task {
-	task, ok := c.Tasks[name]
+func (p *Project) getTaskRelativeToProject(name string) *Task {
+	task, ok := p.Tasks[name]
 	if ok {
 		return task
 	}
 
 	// Uses fallback task if can not find a task with the given name
-	task, ok = c.Tasks[c.FallbackTask]
+	task, ok = p.Tasks[p.FallbackTask]
 	if ok {
 		return task
 	}
@@ -324,12 +324,12 @@ func (c *Config) getTaskRelativeToProject(name string) *Task {
 
 // GetTaskByName returns the task with the given name. If the task is not found, it returns the fallback task. If there is no
 // fallback task, returns an error
-func (c *Config) GetTaskByName(name string) (*Task, error) {
-	projectName, scriptName := c.extractProjectName(name)
+func (p *Project) GetTaskByName(name string) (*Task, error) {
+	projectName, scriptName := p.extractProjectName(name)
 
 	// Gets the task in the current project
 	if projectName == "" {
-		task := c.getTaskRelativeToProject(name)
+		task := p.getTaskRelativeToProject(name)
 		if task == nil {
 			return nil, fmt.Errorf("task '%s' not found", name)
 		}
@@ -338,7 +338,7 @@ func (c *Config) GetTaskByName(name string) (*Task, error) {
 	}
 
 	// Gets the task in a child project
-	project, err := c.GetChildProjectByName(projectName)
+	project, err := p.GetChildProjectByName(projectName)
 	if err != nil {
 		return nil, fmt.Errorf("error getting child project '%s': %w", projectName, err)
 	}
@@ -352,12 +352,12 @@ func (c *Config) GetTaskByName(name string) (*Task, error) {
 }
 
 // GetAllTasks returns all the tasks in the current project and its children projects as a map
-func (c *Config) GetAllTasks() (map[string]*Task, error) {
+func (p *Project) GetAllTasks() (map[string]*Task, error) {
 	tasks := make(map[string]*Task)
-	maps.Copy(tasks, c.Tasks)
+	maps.Copy(tasks, p.Tasks)
 
 	// Adds tasks from children projects
-	for projectName, projectPath := range c.Projects {
+	for projectName, projectPath := range p.Projects {
 		project, err := LoadProject(projectPath)
 		if err != nil {
 			return nil, fmt.Errorf("error reading configuration file of project '%s' at path '%s': %v", projectName, projectPath, err)

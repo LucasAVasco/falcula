@@ -13,7 +13,7 @@ import (
 type App struct {
 	rawMode   bool
 	invokeDir string
-	project   *project.Config
+	project   *project.Project
 }
 
 // NewApp creates a new app instance. The `rawMode` parameter is used to determine if the falcula should run in raw mode (disables the TUI)

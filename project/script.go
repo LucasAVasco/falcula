@@ -7,12 +7,12 @@ import (
 
 // Script is a falcula script. It can be either a shell command, a shell file, Lua code or a Lua file (can not be more than one of them)
 type Script struct {
-	Project   *Config `yaml:"-"`
-	Cwd       string  `yaml:"cwd"`
-	Shell     Command `yaml:"shell"`
-	Lua       string  `yaml:"lua"`
-	ShellFile string  `yaml:"shell_file"`
-	LuaFile   string  `yaml:"lua_file"`
+	Project   *Project `yaml:"-"`
+	Cwd       string   `yaml:"cwd"`
+	Shell     Command  `yaml:"shell"`
+	Lua       string   `yaml:"lua"`
+	ShellFile string   `yaml:"shell_file"`
+	LuaFile   string   `yaml:"lua_file"`
 }
 
 // ConvertToAbsPath converts the paths of the script to absolute paths
