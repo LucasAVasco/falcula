@@ -11,7 +11,6 @@ import (
 )
 
 var ErrClassNameEmpty = errors.New("class name cannot be empty")
-var ErrClassConstructorEmpty = errors.New("constructor cannot be empty")
 
 type Method = lua.LGFunction
 
@@ -42,9 +41,14 @@ func New(L *lua.LState, info *Info, onError func(err error)) (*lua.LTable, error
 	class := L.NewTable()
 	L.SetField(class, "__index", class)
 
+	// Methods
+	if info.Methods != nil {
+		L.SetFuncs(class, info.Methods)
+	}
+
 	// Constructor
 	if info.Constructor == nil {
-		return nil, ErrClassConstructorEmpty
+		return class, nil
 	}
 
 	L.SetField(class, "new", L.NewFunction(func(L *lua.LState) int {
@@ -89,11 +93,6 @@ func New(L *lua.LState, info *Info, onError func(err error)) (*lua.LTable, error
 
 		return 1
 	}))
-
-	// Methods
-	if info.Methods != nil {
-		L.SetFuncs(class, info.Methods)
-	}
 
 	return class, nil
 }
