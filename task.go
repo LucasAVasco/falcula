@@ -74,6 +74,10 @@ func (a *App) RunTask(taskId string, args ...string) error {
 			Code:    task.Lua,
 			Args:    args,
 			AfterRun: func(runtime *luaruntime.Runtime) error {
+				if subTask == "" {
+					return nil
+				}
+
 				err = handleReturnedLuaTask(runtime.GetLuaState(), subTask, args)
 				if err != nil {
 					return fmt.Errorf("error handling returned task: %w", err)
@@ -101,6 +105,10 @@ func (a *App) RunTask(taskId string, args ...string) error {
 			Code:    task.LuaFile,
 			Args:    args,
 			AfterRun: func(runtime *luaruntime.Runtime) error {
+				if subTask == "" {
+					return nil
+				}
+
 				err = handleReturnedLuaTask(runtime.GetLuaState(), subTask, args)
 				if err != nil {
 					return fmt.Errorf("error handling returned task: %w", err)
