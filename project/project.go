@@ -14,17 +14,15 @@ import (
 
 // Project is the project configuration
 type Project struct {
-	File           string             `yaml:"-"`
-	Folder         string             `yaml:"-"`
-	MinimumVersion string             `yaml:"minimum_version"`
-	Cwd            string             `yaml:"cwd"` // Current working directory used for scripts and tasks. Defaults to Folder
-	Extends        []string           `yaml:"extends"`
-	Projects       map[string]string  `yaml:"projects"`
-	Root           bool               `yaml:"root"`
-	Scripts        map[string]*Script `yaml:"scripts"`
-	FallbackScript string             `yaml:"fallback_script"`
-	Tasks          map[string]*Task   `yaml:"tasks"`
-	FallbackTask   string             `yaml:"fallback_task"`
+	File           string            `yaml:"-"`
+	Folder         string            `yaml:"-"`
+	MinimumVersion string            `yaml:"minimum_version"`
+	Cwd            string            `yaml:"cwd"` // Current working directory used for tasks. Defaults to Folder
+	Extends        []string          `yaml:"extends"`
+	Projects       map[string]string `yaml:"projects"`
+	Root           bool              `yaml:"root"`
+	Tasks          map[string]*Task  `yaml:"tasks"`
+	FallbackTask   string            `yaml:"fallback_task"`
 }
 
 // LoadProject reads the project configuration file and parses it
@@ -32,7 +30,6 @@ func LoadProjectFile(file string) (*Project, error) {
 	c := Project{
 		Extends:  make([]string, 0),
 		Projects: make(map[string]string),
-		Scripts:  make(map[string]*Script),
 		Tasks:    make(map[string]*Task),
 	}
 
@@ -94,29 +91,12 @@ func LoadProjectFile(file string) (*Project, error) {
 		c.Projects[name] = path
 	}
 
-	// Configuring scripts
-	for _, script := range c.Scripts {
-		script.Project = &c
-		err := script.ConvertToAbsPath(c.Cwd)
-		if err != nil {
-			return nil, fmt.Errorf("error converting script '%s' to absolute path: %w", script.ShellFile, err)
-		}
-	}
-
 	// Configuring tasks
 	for _, task := range c.Tasks {
 		task.Project = &c
 		err := task.ConvertToAbsPath(c.Cwd)
 		if err != nil {
 			return nil, fmt.Errorf("error converting task '%s' to absolute path: %w", task.ShellFile, err)
-		}
-	}
-
-	// Validates the scripts
-	for name, script := range c.Scripts {
-		err = script.Validate()
-		if err != nil {
-			return nil, fmt.Errorf("error validating script '%s': %w", name, err)
 		}
 	}
 
@@ -143,7 +123,6 @@ func LoadProjectFile(file string) (*Project, error) {
 		}
 
 		mergeWithoutOverride(c.Projects, extend.Projects)
-		mergeWithoutOverride(c.Scripts, extend.Scripts)
 		mergeWithoutOverride(c.Tasks, extend.Tasks)
 	}
 
@@ -210,35 +189,8 @@ func (p *Project) GetChildProjectByName(name string) (*Project, error) {
 	return project, nil
 }
 
-// getScriptRelativeToProject returns the script with the given name relative to the project folder
-func (p *Project) getScriptRelativeToProject(name string) *Script {
-	script, ok := p.Scripts[name]
-	if ok {
-		return script
-	}
-
-	// Uses fallback script if can not find a script with the given name
-	script, ok = p.Scripts[p.FallbackScript]
-	if ok {
-		return script
-	}
-
-	// Treats the name as a script path
-	if strings.HasSuffix(name, ".lua") {
-		script = &Script{
-			LuaFile: name,
-		}
-	} else {
-		script = &Script{
-			ShellFile: name,
-		}
-	}
-
-	return script
-}
-
 // extractProjectName extracts the project name from the given name. Returns the project name and the rest of the name (not including the
-// project name). Example: "project1:project2:script" -> "project1:project2", "script".
+// project name). Example: "project1:project2:task" -> "project1:project2", "task".
 //
 // If there is no project name, returns: "", name
 func (p *Project) extractProjectName(name string) (projectName string, rest string) {
@@ -251,59 +203,6 @@ func (p *Project) extractProjectName(name string) (projectName string, rest stri
 	rest = name[lastProjectSeparatorIndex+1:]
 
 	return projectName, rest
-}
-
-// GetScriptByName returns the script with the given name. If the script is not found, it returns the fallback script. If there is no
-// fallback script, it treats the name as a script path
-func (p *Project) GetScriptByName(name string) (*Script, error) {
-	projectName, scriptName := p.extractProjectName(name)
-
-	// Gets the script in the current project
-	if projectName == "" {
-		script := p.getScriptRelativeToProject(name)
-		if script == nil {
-			return nil, fmt.Errorf("script '%s' not found", name)
-		}
-
-		return script, nil
-	}
-
-	// Gets the script in a child project
-	project, err := p.GetChildProjectByName(projectName)
-	if err != nil {
-		return nil, fmt.Errorf("error getting child project '%s': %w", projectName, err)
-	}
-
-	script, err := project.GetScriptByName(scriptName)
-	if err != nil {
-		return nil, fmt.Errorf("error getting script '%s' from project '%s': %w", scriptName, projectName, err)
-	}
-
-	return script, nil
-}
-
-// GetAllScripts returns all the scripts in the current project and its children projects as a map
-func (p *Project) GetAllScripts() (map[string]*Script, error) {
-	scripts := make(map[string]*Script)
-	maps.Copy(scripts, p.Scripts)
-
-	// Adds scripts from children projects
-	for projectName, projectPath := range p.Projects {
-		project, err := LoadProject(projectPath)
-		if err != nil {
-			return nil, fmt.Errorf("error reading configuration file of project '%s' at path '%s': %v", projectName, projectPath, err)
-		}
-		subScripts, err := project.GetAllScripts()
-		if err != nil {
-			return nil, fmt.Errorf("error getting scripts from child project '%s': %w", projectName, err)
-		}
-
-		for name, script := range subScripts {
-			scripts[projectName+":"+name] = script
-		}
-	}
-
-	return scripts, nil
 }
 
 // getTaskRelativeToProject returns the task with the given name relative to the project folder
@@ -325,7 +224,7 @@ func (p *Project) getTaskRelativeToProject(name string) *Task {
 // GetTaskByName returns the task with the given name. If the task is not found, it returns the fallback task. If there is no
 // fallback task, returns an error
 func (p *Project) GetTaskByName(name string) (*Task, error) {
-	projectName, scriptName := p.extractProjectName(name)
+	projectName, taskName := p.extractProjectName(name)
 
 	// Gets the task in the current project
 	if projectName == "" {
@@ -343,9 +242,9 @@ func (p *Project) GetTaskByName(name string) (*Task, error) {
 		return nil, fmt.Errorf("error getting child project '%s': %w", projectName, err)
 	}
 
-	task, err := project.GetTaskByName(scriptName)
+	task, err := project.GetTaskByName(taskName)
 	if err != nil {
-		return nil, fmt.Errorf("error getting task '%s' from project '%s': %w", scriptName, projectName, err)
+		return nil, fmt.Errorf("error getting task '%s' from project '%s': %w", taskName, projectName, err)
 	}
 
 	return task, nil

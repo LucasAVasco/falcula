@@ -22,7 +22,7 @@ type runLuaConfig struct {
 
 // runLuaCode runs a Lua code. Waits for the user to close the TUI if it is visible
 func (a *App) runLuaCode(config *runLuaConfig) error {
-	// Runs the main script. Repeats the script if the user selects new arguments
+	// Runs the main code. Repeats it if the user selects new arguments
 
 	// Loding modules
 	loader, err := modules.LoadAllModules(config.Runtime, &modules.AllModulesLoaderOptions{
@@ -35,17 +35,17 @@ func (a *App) runLuaCode(config *runLuaConfig) error {
 	}
 	defer loader.Close()
 
-	// Running the script
+	// Running the code
 	err = config.Runtime.Run(config.Code, config.Args...)
 	if err != nil {
-		config.Runtime.Logger.LogError(fmt.Errorf("error running script Lua code: %w", err))
+		config.Runtime.Logger.LogError(fmt.Errorf("error running Lua code: %w", err))
 	}
 
 	// Calling the after run callback
 	if config.AfterRun != nil {
 		err = config.AfterRun(config.Runtime)
 		if err != nil {
-			return fmt.Errorf("error calling callback after running script: %w", err)
+			return fmt.Errorf("error calling callback after running Lua code: %w", err)
 		}
 	}
 
@@ -64,7 +64,7 @@ func (a *App) runLuaCode(config *runLuaConfig) error {
 
 // runLuaFile runs a Lua file. Waits for the user to close the TUI if it is visible
 func (a *App) runLuaFile(config *runLuaConfig) error {
-	// Runs the main script. Repeats the script if the user selects new arguments
+	// Runs the main Lua file. Repeats it if the user selects new arguments
 	for {
 		reRunScript := false
 		var loader *modules.Loader
@@ -90,21 +90,21 @@ func (a *App) runLuaFile(config *runLuaConfig) error {
 		})
 		if err != nil {
 			config.Runtime.Logger.LogError(fmt.Errorf("error loading modules: %w", err))
-			continue // Must not run the script if the modules are not loaded
+			continue // Must not run the Lua file if the modules are not loaded
 		}
 		defer loader.Close()
 
-		// Running the script
+		// Running the file
 		err = config.Runtime.RunFile(config.File, config.Args...)
 		if err != nil {
-			config.Runtime.Logger.LogError(fmt.Errorf("error running script '%s': %w", config.File, err))
+			config.Runtime.Logger.LogError(fmt.Errorf("error running Lua file '%s': %w", config.File, err))
 		}
 
 		// Calling the after run callback
 		if config.AfterRun != nil {
 			err = config.AfterRun(config.Runtime)
 			if err != nil {
-				return fmt.Errorf("error calling callback after running script: %w", err)
+				return fmt.Errorf("error calling callback after running Lua file: %w", err)
 			}
 		}
 

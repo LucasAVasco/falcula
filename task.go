@@ -102,7 +102,7 @@ func (a *App) RunTask(taskId string, args ...string) error {
 	} else if task.LuaFile != "" {
 		config := &runLuaConfig{
 			Runtime: runtime,
-			Code:    task.LuaFile,
+			File:    task.LuaFile,
 			Args:    args,
 			AfterRun: func(runtime *luaruntime.Runtime) error {
 				if subTask == "" {
@@ -131,10 +131,15 @@ func (a *App) RunTask(taskId string, args ...string) error {
 
 // configureTaskCmd configures a task execution command
 func (a *App) configureTaskCmd(cmd *exec.Cmd, task *project.Task, taskId string) {
-	a.configureCmd(cmd, task.Project.Folder)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, "FALCULA_PROJECT_DIR="+task.Project.Folder)
+	cmd.Env = append(cmd.Env, "FALCULA_INVOKE_DIR="+a.invokeDir)
 
 	taskName, subTask, _ := strings.Cut(taskId, ".")
-	cmd.Env = append(cmd.Env, "FALCULA_TASK_ID="+taskId)
 	cmd.Env = append(cmd.Env, "FALCULA_TASK_NAME="+taskName)
 	cmd.Env = append(cmd.Env, "FALCULA_SUB_TASK_NAME="+subTask)
 }

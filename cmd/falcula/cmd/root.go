@@ -15,7 +15,7 @@ var rootCmd = &cobra.Command{
 	Short: "A programmable toolkit for services, containers, and image generation",
 	Long: `Falcula is a tool that can be used to create and manage services, containers, and image generation.
 
-It works by running a Lua script in the background and providing a TUI (optional) to control it.
+It works by running tasks written in shell or Lua in the background and providing a TUI (optional) to control it.
 Falcula exposes a set of Lua modules to create and manage services and containers.`,
 
 	SilenceUsage: true,

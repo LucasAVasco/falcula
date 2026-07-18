@@ -54,4 +54,5 @@ falcula task run innerProject1:innerProject2:taskName arg1 arg2`,
 
 func init() {
 	taskCmd.AddCommand(taskRunCmd)
+	rootCmd.AddCommand(taskRunCmd) // Alias to run tasks with `falcula run <task-name>`
 }
