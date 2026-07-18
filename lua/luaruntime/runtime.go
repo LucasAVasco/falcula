@@ -7,13 +7,19 @@ import (
 
 	"github.com/LucasAVasco/falcula/lua/luaruntime/ioredirect"
 	"github.com/LucasAVasco/falcula/lua/luaruntime/logger"
+	"github.com/LucasAVasco/falcula/project"
 	"github.com/LucasAVasco/falcula/service/manager"
 	lua "github.com/yuin/gopher-lua"
 )
 
+type OnRunTask = func(task *project.Task, subTask string, args []string) error
+
 // Runtime represents the environment for running Lua scripts. It has a Lua state and data common to all modules, includeing, the created
 // service managers the current state of the script (current arguments and available arguments)
 type Runtime struct {
+	project   *project.Project
+	onRunTask OnRunTask
+
 	// Current Lua state
 	luaState         *lua.LState
 	stateMutex       sync.Mutex
@@ -32,9 +38,11 @@ type Runtime struct {
 	onSetScriptAvailableArgs func(args [][]string)
 }
 
-func New() (*Runtime, error) {
+func New(proj *project.Project, onRunTask OnRunTask) (*Runtime, error) {
 	r := Runtime{
-		managers: make([]*manager.Manager, 0),
+		project:   proj,
+		onRunTask: onRunTask,
+		managers:  make([]*manager.Manager, 0),
 	}
 
 	// Default callbacks
@@ -72,6 +80,16 @@ func (r *Runtime) resetLusStateWithoutLock() {
 
 	r.luaState = lua.NewState()
 	ioredirect.Redirect(r.luaState, r.Logger)
+}
+
+// GetProject returns the current project if it exists. If it doesn't exist, returns `nil`.
+func (r *Runtime) GetProject() *project.Project {
+	return r.project
+}
+
+// GetOnRunTask returns the function that is called when a task is selected to run.
+func (r *Runtime) GetOnRunTask() OnRunTask {
+	return r.onRunTask
 }
 
 // GetLuaState returns the current Lua state. Creates a new one if it doesn't exist

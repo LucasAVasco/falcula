@@ -92,7 +92,8 @@ func LoadProjectFile(file string) (*Project, error) {
 	}
 
 	// Configuring tasks
-	for _, task := range c.Tasks {
+	for name, task := range c.Tasks {
+		task.Name = name
 		task.Project = &c
 		err := task.ConvertToAbsPath(c.Cwd)
 		if err != nil {
@@ -156,6 +157,72 @@ func LoadProject(folder string) (*Project, error) {
 	}
 
 	return project, nil
+}
+
+// GetChildProjects reads the sub-projects in the current project and loads them.
+func (p *Project) GetChildProjects() (map[string]*Project, error) {
+	projects := make(map[string]*Project, len(p.Projects))
+
+	for name, path := range p.Projects {
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(p.Folder, path)
+		}
+
+		project, err := LoadProject(path)
+		if err != nil {
+			return nil, fmt.Errorf("error reading child project configuration file '%s': %w", name, err)
+		}
+
+		projects[name] = project
+	}
+
+	return projects, nil
+}
+
+// GetChildProjectsNames returns the names of the sub-projects in the current project.
+func (p *Project) GetChildProjectsNames() []string {
+	projects := make([]string, 0, len(p.Projects))
+	for name := range p.Projects {
+		projects = append(projects, name)
+	}
+	return projects
+}
+
+// GetAllChildProjects reads the sub-projects in the current project and its children and loads them. It behaves similar to the
+// `GetChildProjects` method, but is recursive.
+func (p *Project) GetAllChildProjects() (map[string]*Project, error) {
+	projects, err := p.GetChildProjects()
+	if err != nil {
+		return nil, err
+	}
+
+	for name, project := range projects {
+		subProjects, err := project.GetAllChildProjects()
+		if err != nil {
+			return nil, fmt.Errorf("error getting child project '%s': %w", name, err)
+		}
+
+		for subName, subProject := range subProjects {
+			projects[name+":"+subName] = subProject
+		}
+	}
+
+	return projects, nil
+}
+
+// GetAllChildProjectsNames returns the names of the sub-projects in the current project and its children. It behaves similar to the
+// `GetChildProjectsNames` method, but is recursive.
+func (p *Project) GetAllChildProjectsNames() ([]string, error) {
+	projects, err := p.GetAllChildProjects()
+	if err != nil {
+		return nil, fmt.Errorf("error getting all child projects recursively: %w", err)
+	}
+
+	names := make([]string, 0, len(projects))
+	for name := range projects {
+		names = append(names, name)
+	}
+	return names, nil
 }
 
 // GetChildProjectByName returns the child project with the given name or nil if not found
@@ -273,4 +340,29 @@ func (p *Project) GetAllTasks() (map[string]*Task, error) {
 	}
 
 	return tasks, nil
+}
+
+// GetTasksNames returns all the tasks names in the current project. Does not include tasks from child projects.
+func (p *Project) GetTasksNames() []string {
+	names := make([]string, 0, len(p.Tasks))
+	for name := range p.Tasks {
+		names = append(names, name)
+	}
+	return names
+}
+
+// GetAllTasksNames returns all the tasks names in the current project and its children projects. Similar to `GetTasksNames` but is
+// recursive.
+func (p *Project) GetAllTasksNames() ([]string, error) {
+	tasks, err := p.GetAllTasks()
+	if err != nil {
+		return nil, fmt.Errorf("error getting all tasks: %w", err)
+	}
+
+	names := make([]string, 0, len(tasks))
+	for name := range tasks {
+		names = append(names, name)
+	}
+
+	return names, nil
 }

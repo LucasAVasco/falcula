@@ -12,6 +12,7 @@ import (
 	"github.com/LucasAVasco/falcula/lua/modules/modmanager"
 	"github.com/LucasAVasco/falcula/lua/modules/modpath"
 	"github.com/LucasAVasco/falcula/lua/modules/modprocess"
+	"github.com/LucasAVasco/falcula/lua/modules/modproject"
 	"github.com/LucasAVasco/falcula/lua/modules/modtbl"
 	"github.com/LucasAVasco/falcula/lua/modules/modtemplate"
 	"github.com/LucasAVasco/falcula/lua/modules/modtui"
@@ -55,6 +56,7 @@ func (l *Loader) LoadAllModules(config *AllModulesLoaderOptions) error {
 
 	// Other modules
 	l.LoadModule("falcula", modfalcula.New())
+	l.LoadModule("falcula.project", modproject.New())
 	l.LoadModuleFromFunction("falcula.inspect", modinspect.LoadFunction)
 	l.LoadModule("falcula.json", modjson.New())
 	l.LoadModule("falcula.yaml", modyaml.New())

@@ -53,8 +53,7 @@ func New(L *lua.LState, info *Info, onError func(err error)) (*lua.LTable, error
 
 	L.SetField(class, "new", L.NewFunction(func(L *lua.LState) int {
 		class := L.ToTable(1)
-		newObj := L.NewTable()
-		L.SetMetatable(newObj, class)
+		newObj := CreateInstance(L, class)
 
 		err := info.Constructor(L, newObj)
 		if err != nil {
@@ -95,6 +94,18 @@ func New(L *lua.LState, info *Info, onError func(err error)) (*lua.LTable, error
 	}))
 
 	return class, nil
+}
+
+// CreateInstance creates a new object of the class
+func CreateInstance(L *lua.LState, class *lua.LTable) *lua.LTable {
+	newObj := L.NewTable()
+	L.SetMetatable(newObj, class)
+	return newObj
+}
+
+// SetMethods adds methods to the class. Overrides old methods if they have the same name.
+func SetMethods(L *lua.LState, class *lua.LTable, methods map[string]Method) {
+	L.SetFuncs(class, methods)
 }
 
 // GetAttribute gets a object attribute. Must not be used outside a class method
@@ -142,4 +153,14 @@ func CallMethod(L *lua.LState, object *lua.LTable, method string, numReturn int,
 	}
 
 	return retList, nil
+}
+
+// SetInstance sets the instance of the class when called inside a method. Must not be used outside a method
+func SetInstance(L *lua.LState, luaInstance *lua.LTable, goInstance any) {
+	SetAttribute(L, luaInstance, "_class_instance", goInstance)
+}
+
+// GetInstance gets the instance of the class when called inside a method. Must not be used outside a method.
+func GetInstance[T any](L *lua.LState) T {
+	return GetAttribute(L, "_class_instance").(T)
 }

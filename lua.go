@@ -51,7 +51,7 @@ func (a *App) runLuaCode(config *runLuaConfig) error {
 
 	// Wait until the TUI is closed or the user selects new arguments
 	for {
-		if modtui.TuiIsVisible() {
+		if modtui.IsTuiVisible() {
 			time.Sleep(100 * time.Millisecond)
 			continue
 		}
@@ -110,7 +110,7 @@ func (a *App) runLuaFile(config *runLuaConfig) error {
 
 		// Wait until the TUI is closed or the user selects new arguments
 		for {
-			if !reRunScript && modtui.TuiIsVisible() {
+			if !reRunScript && modtui.IsTuiVisible() {
 				time.Sleep(100 * time.Millisecond)
 				continue
 			}

@@ -18,7 +18,7 @@ var taskListCmd = &cobra.Command{
 			return fmt.Errorf("error creating falcula app: %w", err)
 		}
 
-		tasks, err := app.GetTaskList()
+		tasks, err := app.GetAllTasks()
 		if err != nil {
 			return fmt.Errorf("error getting tasks list: %w", err)
 		}

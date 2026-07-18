@@ -1,7 +1,9 @@
 // Package luatable is a collection of utilities functions related to Lua tables
 package luatable
 
-import "github.com/yuin/gopher-lua"
+import (
+	"github.com/yuin/gopher-lua"
+)
 
 // GetValuesFromLuaTable returns all values from the (key, value) pairs of a Lua table
 func GetValuesFromLuaTable(table *lua.LTable) []lua.LValue {

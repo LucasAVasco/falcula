@@ -13,18 +13,30 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
-// GetTaskList returns all the tasks in the current project and its children projects
-func (a *App) GetTaskList() (map[string]*project.Task, error) {
+// GetAllTasks returns all the tasks in the current project and its children projects.
+func (a *App) GetAllTasks() (map[string]*project.Task, error) {
 	return a.project.GetAllTasks()
 }
 
-// RunTask runs a task of the current project with the given arguments. The taskName can be the name of a named task or the path to
-// a task
-func (a *App) RunTask(taskId string, args ...string) error {
+// RunTaskById runs a task of the current project with the given arguments. Gets the task by its ID from the current project. The ID follows
+// this format: "taskName.subTaskName"
+func (a *App) RunTaskById(taskId string, args ...string) error {
 	taskName, subTask, _ := strings.Cut(taskId, ".")
 
+	task, err := a.project.GetTaskByName(taskName)
+	if err != nil {
+		return fmt.Errorf("error getting task to run: %w", err)
+	}
+
+	return a.RunTask(task, subTask, args...)
+}
+
+// RunTaskById runs a task of the current project with the given arguments. The subtask is optional.
+func (a *App) RunTask(task *project.Task, subTask string, args ...string) error {
 	// Lua runtime
-	runtime, err := luaruntime.New()
+	runtime, err := luaruntime.New(task.Project, func(task *project.Task, subTask string, args []string) error {
+		return a.RunTask(task, subTask, args...)
+	})
 	if err != nil {
 		return fmt.Errorf("error creating runtime: %w", err)
 	}
@@ -32,12 +44,6 @@ func (a *App) RunTask(taskId string, args ...string) error {
 
 	// modtui does not closes the TUI when it is closed. The TUI is persistent across runs. Need to close it manually
 	defer modtui.ClosePersistentTui()
-
-	// Task to run
-	task, err := a.project.GetTaskByName(taskName)
-	if err != nil {
-		return fmt.Errorf("error getting task to run: %w", err)
-	}
 
 	// Changes to task directory
 	err = os.Chdir(task.Cwd)
@@ -50,7 +56,7 @@ func (a *App) RunTask(taskId string, args ...string) error {
 			cmdArgs := task.Shell.List[1:]
 			cmdArgs = append(cmdArgs, args...)
 			cmd := process.CreateCmd(false, task.Shell.List[0], cmdArgs...)
-			a.configureTaskCmd(cmd, task, taskId)
+			a.configureTaskCmd(cmd, task, subTask)
 
 			err := cmd.Run()
 			if err != nil {
@@ -59,7 +65,7 @@ func (a *App) RunTask(taskId string, args ...string) error {
 
 		} else if task.Shell.String != "" {
 			code := task.Shell.String
-			err := a.runTaskShellScript(task, taskId, code, args)
+			err := a.runTaskShellScript(task, subTask, code, args)
 			if err != nil {
 				return fmt.Errorf("error running shell script: %w", err)
 			}
@@ -94,7 +100,7 @@ func (a *App) RunTask(taskId string, args ...string) error {
 	} else if task.ShellFile != "" {
 		code := "source " + task.ShellFile
 
-		err := a.runTaskShellScript(task, taskId, code, args)
+		err := a.runTaskShellScript(task, subTask, code, args)
 		if err != nil {
 			return fmt.Errorf("error running task shell script: %w", err)
 		}
@@ -123,14 +129,14 @@ func (a *App) RunTask(taskId string, args ...string) error {
 		}
 
 	} else {
-		return fmt.Errorf("there is no action defined for the task '%s'", taskName)
+		return fmt.Errorf("there is no action defined for the task '%s'", task.Name)
 	}
 
 	return nil
 }
 
 // configureTaskCmd configures a task execution command
-func (a *App) configureTaskCmd(cmd *exec.Cmd, task *project.Task, taskId string) {
+func (a *App) configureTaskCmd(cmd *exec.Cmd, task *project.Task, subTask string) {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
@@ -138,16 +144,12 @@ func (a *App) configureTaskCmd(cmd *exec.Cmd, task *project.Task, taskId string)
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, "FALCULA_PROJECT_DIR="+task.Project.Folder)
 	cmd.Env = append(cmd.Env, "FALCULA_INVOKE_DIR="+a.invokeDir)
-
-	taskName, subTask, _ := strings.Cut(taskId, ".")
-	cmd.Env = append(cmd.Env, "FALCULA_TASK_NAME="+taskName)
+	cmd.Env = append(cmd.Env, "FALCULA_TASK_NAME="+task.Name)
 	cmd.Env = append(cmd.Env, "FALCULA_SUB_TASK_NAME="+subTask)
 }
 
 // runTaskShellScript runs a shell script code with the given arguments and executes a subtask of it
-func (a *App) runTaskShellScript(task *project.Task, taskId, code string, args []string) error {
-	_, subTask, _ := strings.Cut(taskId, ".")
-
+func (a *App) runTaskShellScript(task *project.Task, subTask, code string, args []string) error {
 	// Executes the subtask after the provided code
 	if subTask != "" {
 		code += "\n" + subTask + " \"$@\""
@@ -159,7 +161,7 @@ func (a *App) runTaskShellScript(task *project.Task, taskId, code string, args [
 
 	// Runs the command
 	cmd := process.CreateCmd(true, code, cmdArgs...)
-	a.configureTaskCmd(cmd, task, taskId)
+	a.configureTaskCmd(cmd, task, subTask)
 
 	err := cmd.Run()
 	if err != nil {

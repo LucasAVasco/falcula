@@ -7,6 +7,7 @@ import (
 
 // Task is a falcula task. It can be either a shell command, a shell file, Lua code or a Lua file (can not be more than one of them)
 type Task struct {
+	Name      string   `yaml:"-"`
 	Project   *Project `yaml:"-"`
 	Cwd       string   `yaml:"cwd"`
 	Shell     Command  `yaml:"shell"`
