@@ -67,7 +67,7 @@ func GetCurrentLuaDirectory(L *lua.LState) (string, error) {
 	return dir, nil
 }
 
-// GetAbs converts a path to an absolute path. If the path is relative, uses the directory of the current Lua script as base
+// GetAbs converts a path to an absolute path. If the path is relative, uses the directory of the current Lua file as base
 func GetAbs(L *lua.LState, path string) (string, error) {
 	if !filepath.IsAbs(path) {
 		currentDir, err := GetCurrentLuaDirectory(L)
@@ -87,8 +87,8 @@ func GetAbs(L *lua.LState, path string) (string, error) {
 	return filepath.Clean(path), nil
 }
 
-// GetRel converts a path to a relative path. If the path is relative, uses the directory of the current Lua script as base. If the base is
-// empty, uses the directory of the current Lua script
+// GetRel converts a path to a relative path. If the path is relative, uses the directory of the current Lua file as base. If the base is
+// empty, uses the directory of the current Lua file
 func GetRel(L *lua.LState, path string, base string) (string, error) {
 	path, err := GetAbs(L, path)
 	if err != nil {

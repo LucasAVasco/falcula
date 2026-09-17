@@ -27,8 +27,8 @@ func Push(L *lua.LState, numReturnWithoutError int, err error) int {
 	return numReturnWithoutError + 1
 }
 
-// ConfigureAbortOnError configures whether the script should abort on error (abort = true) or just return the error appended to the end of
-// the return values (abort = false)
+// ConfigureAbortOnError configures whether the interpreter should abort on error (abort = true) or just return the error appended to the
+// end of the return values (abort = false)
 func ConfigureAbortOnError(abort bool) {
 	abortOnError.Store(abort)
 }
