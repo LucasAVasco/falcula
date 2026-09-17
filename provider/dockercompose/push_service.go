@@ -142,6 +142,9 @@ func (s *PushService) generatePushProcesses(info *PushInfo) ([]*process.Process,
 		if err != nil {
 			return nil, fmt.Errorf("error getting service image: %w", err)
 		}
+		if serviceImage == "" {
+			continue
+		}
 		images = append(images, serviceImage)
 	}
 

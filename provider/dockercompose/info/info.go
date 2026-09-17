@@ -120,5 +120,9 @@ func (p *DockerComposeInfo) GetServiceImage(serviceName string) (string, error) 
 		return "", fmt.Errorf("service %s not found", serviceName)
 	}
 
+	if service.Image == nil {
+		return "", nil
+	}
+
 	return *service.Image, nil
 }

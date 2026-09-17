@@ -76,6 +76,10 @@ func (s *BuildService) generateBuildProcessesForPlatform(services []string, plat
 				return nil, fmt.Errorf("error getting service image: %w", err)
 			}
 
+			if srcImage == "" {
+				continue
+			}
+
 			destImage := srcImage
 			if platform != "" {
 				destImage = srcImage + ":" + platform
