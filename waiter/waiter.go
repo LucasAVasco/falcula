@@ -13,10 +13,6 @@ type Waiter struct {
 	errs []error
 }
 
-func NewWaiter() *Waiter {
-	return &Waiter{}
-}
-
 // AddError adds an error to the Waiter errors list
 func (w *Waiter) AddError(err error) {
 	w.errs = append(w.errs, err)

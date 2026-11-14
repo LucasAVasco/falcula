@@ -25,18 +25,14 @@ func (a *App) runLuaCode(config *runLuaConfig) error {
 	// Runs the main code. Repeats it if the user selects new arguments
 
 	// Loding modules
-	loader, err := modules.LoadAllModules(config.Runtime, &modules.AllModulesLoaderOptions{
+	loader := modules.LoadAllModules(config.Runtime, &modules.AllModulesLoaderOptions{
 		RawMode:      a.rawMode,
 		OnSelectArgs: func(newArgs []string) {},
 	})
-	if err != nil {
-		config.Runtime.Logger.LogError(fmt.Errorf("error loading modules: %w", err))
-		return nil
-	}
 	defer loader.Close()
 
 	// Running the code
-	err = config.Runtime.Run(config.Code, config.Args...)
+	err := config.Runtime.Run(config.Code, config.Args...)
 	if err != nil {
 		config.Runtime.Logger.LogError(fmt.Errorf("error running Lua code: %w", err))
 	}
@@ -70,8 +66,7 @@ func (a *App) runLuaFile(config *runLuaConfig) error {
 		var loader *modules.Loader
 
 		// Loding modules
-		var err error
-		loader, err = modules.LoadAllModules(config.Runtime, &modules.AllModulesLoaderOptions{
+		loader = modules.LoadAllModules(config.Runtime, &modules.AllModulesLoaderOptions{
 			RawMode: a.rawMode,
 			OnSelectArgs: func(newArgs []string) {
 				reRunScript = true
@@ -88,14 +83,10 @@ func (a *App) runLuaFile(config *runLuaConfig) error {
 				config.Runtime.ResetLuaState()
 			},
 		})
-		if err != nil {
-			config.Runtime.Logger.LogError(fmt.Errorf("error loading modules: %w", err))
-			continue // Must not run the Lua file if the modules are not loaded
-		}
 		defer loader.Close()
 
 		// Running the file
-		err = config.Runtime.RunFile(config.File, config.Args...)
+		err := config.Runtime.RunFile(config.File, config.Args...)
 		if err != nil {
 			config.Runtime.Logger.LogError(fmt.Errorf("error running Lua file '%s': %w", config.File, err))
 		}

@@ -121,12 +121,11 @@ func (s *Sidebar) RemoveManager(man *manager.Manager) error {
 }
 
 // RemoveAllManagers removes all managers from the side bar
-func (s *Sidebar) RemoveAllManagers() error {
+func (s *Sidebar) RemoveAllManagers() {
 	s.root.ClearChildren()
 
 	// Updates the UI
 	s.app.Draw()
-	return nil
 }
 
 // }}}

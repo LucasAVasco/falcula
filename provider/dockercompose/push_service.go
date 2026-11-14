@@ -182,15 +182,10 @@ func (s *PushService) Prepare(callback iface.OnExitCallback) (iface.Step, error)
 }
 
 func (s *PushService) Start(callback iface.OnExitCallback) (iface.Step, error) {
-	if s.opts == nil {
-		return nil, fmt.Errorf("no options provided")
-	}
-
 	if s.opts.Pushes == nil {
 		return nil, fmt.Errorf("no push information provided")
 	}
 
-	// __AUTO_GENERATED_PRINT_VAR_START__
 	procList, err := s.generatePushListProcesses(s.opts.Pushes)
 	if err != nil {
 		return nil, fmt.Errorf("error getting push processes: %w", err)

@@ -64,10 +64,6 @@ func (m *Module) GetTui() *tui.Tui {
 	return serviceTui
 }
 
-func (m *Module) IsTuiVisible() bool {
-	return IsTuiVisible()
-}
-
 // ShowTui shows the text user interface.
 func (m *Module) ShowTui() error {
 	// Don't show the text user interface in raw mode
@@ -77,14 +73,10 @@ func (m *Module) ShowTui() error {
 
 	// Ensure that the text user interface is created
 	if serviceTui == nil {
-		var err error
-		serviceTui, err = tui.New(&tui.Config{
+		serviceTui = tui.New(&tui.Config{
 			Runtime:      m.Config.Runtime,
 			OnSelectArgs: m.config.OnSelectArgs,
 		})
-		if err != nil {
-			return fmt.Errorf("error creating text user interface: %w", err)
-		}
 	}
 
 	// Show the text user interface
@@ -94,16 +86,6 @@ func (m *Module) ShowTui() error {
 	}
 
 	return nil
-}
-
-// HideTui hides the text user interface.
-func (m *Module) HideTui() {
-	HideTui()
-}
-
-// WaitForTuiHide waits until the text user interface is hidden.
-func (m *Module) WaitForTuiHide() {
-	WaitForTuiHide()
 }
 
 // Close closes the module. Can be called multiple times

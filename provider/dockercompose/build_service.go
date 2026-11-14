@@ -176,5 +176,5 @@ func (s *BuildService) Start(callback iface.OnExitCallback) (iface.Step, error) 
 	}
 	procList = append(procList, newProcList...)
 
-	return adapter.SerialProcessesToStep(procList, callback), err
+	return adapter.SerialProcessesToStep(procList, callback), nil
 }

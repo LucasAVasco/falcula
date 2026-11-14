@@ -39,11 +39,3 @@ func (r *Runtime) closeAllManagersWithoutLock() {
 
 	r.managers = make([]*manager.Manager, 0)
 }
-
-// CloseAllManagers closes all service managers. Errors are logged in the logger
-func (r *Runtime) CloseAllManagers() {
-	r.stateMutex.Lock()
-	defer r.stateMutex.Unlock()
-
-	r.closeAllManagersWithoutLock()
-}

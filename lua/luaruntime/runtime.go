@@ -133,9 +133,6 @@ func (r *Runtime) Run(luaCode string, args ...string) error {
 
 	// Lua state used to execute the file
 	state := r.GetLuaState()
-	if state == nil {
-		return fmt.Errorf("lua state is nil")
-	}
 
 	// Sets the command line arguments
 	r.scriptCurrentArgs = args
@@ -161,9 +158,6 @@ func (r *Runtime) RunFile(file string, args ...string) error {
 
 	// Lua state used to execute the file
 	state := r.GetLuaState()
-	if state == nil {
-		return fmt.Errorf("lua state is nil")
-	}
 
 	// Sets the command line arguments
 	r.scriptCurrentArgs = args

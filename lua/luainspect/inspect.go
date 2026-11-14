@@ -104,15 +104,6 @@ func inspect(writer *enhancedWriter, firstIndentLevel uint, indentLevel uint, va
 	return nil
 }
 
-// Inspect inspects a Lua value and writes it to the writer
-func InspectWriter(value lua.LValue, writer io.Writer) error {
-	err := inspect(&enhancedWriter{writer: writer}, 0, 0, value)
-	if err != nil {
-		return fmt.Errorf("error inspecting value: %w", err)
-	}
-	return nil
-}
-
 // Inspect inspects a Lua value and returns it as a string
 func Inspect(value lua.LValue) (string, error) {
 	buffer := strings.Builder{}

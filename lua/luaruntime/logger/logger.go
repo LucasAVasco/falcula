@@ -11,7 +11,6 @@ import (
 
 	"github.com/LucasAVasco/falcula/logfile"
 	"github.com/LucasAVasco/falcula/multiplexer"
-	"github.com/LucasAVasco/falcula/service/enhanced"
 )
 
 // Logger is a logger that supports multiple log levels and saves the logs to a file
@@ -132,14 +131,6 @@ func (l *Logger) ResetOnServiceLog() {
 	l.SetOnServiceLog(func(b []byte) (int, error) {
 		return fmt.Print(string(b))
 	})
-}
-
-// LogService logs a message to the service log
-func (l *Logger) LogService(svc enhanced.EnhancedService, message string) (int, error) {
-	l.mutex.Lock()
-	defer l.mutex.Unlock()
-
-	return l.onServiceLog([]byte(message))
 }
 
 // SetOnDebugLog sets the handler for the debug log

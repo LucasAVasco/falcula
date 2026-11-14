@@ -50,11 +50,6 @@ func (e *EnhancedService) GetName() string {
 	return e.svc.GetName()
 }
 
-// GetService returns the original service
-func (e *EnhancedService) GetService() iface.Service {
-	return e.svc
-}
-
 func (e *EnhancedService) GetStatus() status.Status {
 	return e.status
 }
@@ -186,7 +181,7 @@ func (e *EnhancedService) Prepare() (*iface.ExitInfo, error) {
 		)
 	}
 
-	return exitInfo, err
+	return exitInfo, nil
 }
 
 // AbortPrepare aborts the preparing step and returns its exit information if any. The force parameter is used to force the abort (instead
@@ -452,5 +447,5 @@ func (e *EnhancedService) Restart(force bool) (*iface.ExitInfo, error) {
 		return nil, fmt.Errorf("error starting service '%s': %w", e.GetName(), err)
 	}
 
-	return nil, err
+	return nil, nil
 }

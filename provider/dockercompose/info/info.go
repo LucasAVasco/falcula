@@ -46,16 +46,6 @@ func (p *DockerComposeInfo) GetComposeFile() (*parser.File, error) {
 	return p.composeFile, nil
 }
 
-// AddDefaultBuildService adds a service to the list of default build services
-func (p *DockerComposeInfo) AddDefaultBuildService(service string) {
-	p.defaultPushImages = append(p.defaultBuildServices, service)
-}
-
-// AddDefaultBuildServices adds multiple services to the list of default build services
-func (p *DockerComposeInfo) AddDefaultBuildServices(services []string) {
-	p.defaultPushImages = append(p.defaultBuildServices, services...)
-}
-
 // getDefaultBuildServices returns the default build services (if the user does not provide any default build service, returns all buildable
 // services)
 func (p *DockerComposeInfo) GetDefaultBuildServices() ([]string, error) {
@@ -102,11 +92,6 @@ func (p *DockerComposeInfo) GetDefaultPushImages() ([]string, error) {
 	}
 
 	return p.defaultPushImages, nil
-}
-
-// GetPushImages returns the list of default push images. You must not modify this list
-func (p *DockerComposeInfo) GetPushImages() []string {
-	return p.defaultPushImages
 }
 
 // GetServiceImage returns the image of a service

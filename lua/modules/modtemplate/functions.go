@@ -14,10 +14,7 @@ import (
 // parseString parses a string as a Go template and executes it with the given data. Returns the result
 func parseString(str string, data any, funcMap template.FuncMap) (string, error) {
 	// Sanitizes
-	str, err := sanitizer.SanitizeTemplate(str, "")
-	if err != nil {
-		return "", fmt.Errorf("error sanitizing string: %w", err)
-	}
+	str = sanitizer.SanitizeTemplate(str, "")
 
 	// New template
 	tpl := template.New("main").Funcs(sprig.FuncMap())
@@ -26,7 +23,7 @@ func parseString(str string, data any, funcMap template.FuncMap) (string, error)
 	}
 
 	// Parses
-	tpl, err = tpl.Parse(str)
+	tpl, err := tpl.Parse(str)
 	if err != nil {
 		return "", fmt.Errorf("error parsing template: %w", err)
 	}

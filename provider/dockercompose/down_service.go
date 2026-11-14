@@ -43,5 +43,5 @@ func (s *DownService) Start(callback iface.OnExitCallback) (iface.Step, error) {
 		return nil, fmt.Errorf("error starting 'Down' command: %w", err)
 	}
 
-	return AbortWithKillDecorator(adapter.ProcessToStep(proc), s.Service), err
+	return AbortWithKillDecorator(adapter.ProcessToStep(proc), s.Service), nil
 }

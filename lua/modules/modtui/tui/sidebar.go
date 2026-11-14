@@ -34,6 +34,6 @@ func (t *Tui) UpdateServiceStatusInSidebar(man *manager.Manager, svc *enhanced.E
 
 // RemoveAllManagersFromSidebar removes all managers from the sidebar. Does not delete the managers or its services, just removes the visual
 // representation from the sidebar
-func (t *Tui) RemoveAllManagersFromSidebar() error {
-	return t.mainPage.SideBar.RemoveAllManagers()
+func (t *Tui) RemoveAllManagersFromSidebar() {
+	t.mainPage.SideBar.RemoveAllManagers()
 }

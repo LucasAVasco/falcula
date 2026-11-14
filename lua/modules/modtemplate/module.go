@@ -14,7 +14,6 @@ import (
 // Module is a module that provides functions and classes for working with Go templates
 type Module struct {
 	base.BaseModule
-	tmplate *template.Template
 }
 
 func New() *Module {

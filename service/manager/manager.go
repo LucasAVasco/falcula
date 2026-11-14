@@ -47,19 +47,6 @@ func (m *Manager) AddService(svc iface.Service, callback *enhanced.Callbacks) *e
 	return enhancedService
 }
 
-// AddServices adds multiple services to the manager and returns the enhanced services. The callback is used to create the enhanced service,
-// but is optional
-func (m *Manager) AddServices(svc []iface.Service, callback *enhanced.Callbacks) []*enhanced.EnhancedService {
-	services := make([]*enhanced.EnhancedService, len(svc))
-
-	for i, svc := range svc {
-		enhancedService := m.AddService(svc, callback)
-		services[i] = enhancedService
-	}
-
-	return services
-}
-
 // RemoveService removes a service from the manager and returns the enhanced service. The onServiceStop callback is optional and will be
 // called when the service is stopped. The force parameter is used to force the stop (instead of execute a graceful shutdown)
 func (m *Manager) RemoveService(svc *enhanced.EnhancedService, force bool, onServiceStop enhanced.ExitStepCallback) error {
@@ -255,21 +242,6 @@ func (m *Manager) Run(onServiceEnded enhanced.ExitStepCallback) error {
 	return nil
 }
 
-// RunEach runs each service separately. The service starts after its own preparing step is finished (does not wait for other services)
-func (m *Manager) RunEach(onServiceEnded enhanced.ExitStepCallback) *waiter.Waiter {
-	onServiceEnded = applyDefaultExitProcessCallback(onServiceEnded)
-
-	return m.routineForEachService(func(svc *enhanced.EnhancedService) (*iface.ExitInfo, error) {
-		exitInfo, err := svc.Run()
-		if err != nil {
-			err = fmt.Errorf("error running enhanced service '%s': %w", svc.GetName(), err)
-		}
-
-		onServiceEnded(svc, exitInfo, err)
-		return exitInfo, err
-	})
-}
-
 // RunSerial runs each service separately (e.g.: service 2 is only started after service 1 has ended)
 func (m *Manager) RunSerial(onServicePrepared enhanced.ExitStepCallback, onServiceEnded enhanced.ExitStepCallback) error {
 	onServiceEnded = applyDefaultExitProcessCallback(onServiceEnded)
@@ -366,22 +338,6 @@ func (m *Manager) Restart(force bool, onServiceEnded enhanced.ExitStepCallback) 
 	}
 
 	return nil
-}
-
-// RestartEach restarts each service separately. The service starts after its own preparing step is finished (does not wait for other
-// services)
-func (m *Manager) RestartEach(force bool, onServiceEnded enhanced.ExitStepCallback) *waiter.Waiter {
-	onServiceEnded = applyDefaultExitProcessCallback(onServiceEnded)
-
-	return m.routineForEachService(func(svc *enhanced.EnhancedService) (*iface.ExitInfo, error) {
-		exitInfo, err := svc.Restart(force)
-		if err != nil {
-			err = fmt.Errorf("error resetting enhanced service '%s': %w", svc.GetName(), err)
-		}
-
-		onServiceEnded(svc, exitInfo, err)
-		return exitInfo, err
-	})
 }
 
 // Disable disables all services

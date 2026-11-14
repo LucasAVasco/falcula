@@ -13,9 +13,7 @@ import (
 
 // MainPage is the main page widget of the application
 type MainPage struct {
-	app             *app.App
 	keyBindsHandler *keybinds.Handler
-	logFilePath     string
 	help            *help.HelpWidget
 
 	// User interface
@@ -33,9 +31,7 @@ type MainPage struct {
 
 func New(app *app.App, logFilePath string, help *help.HelpWidget) *MainPage {
 	m := MainPage{
-		app:         app,
-		logFilePath: logFilePath,
-		help:        help,
+		help: help,
 
 		// Callbacks
 		OnFocusArgs: func() {},

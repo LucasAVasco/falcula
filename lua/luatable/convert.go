@@ -40,17 +40,6 @@ func GetStringsFromLuaTableThatKeyIsNumber(table *lua.LTable) []string {
 	return result
 }
 
-// GetLuaTableFromValues returns a Lua table from a slice of Lua values
-func GetLuaTableFromValues(L *lua.LState, values []lua.LValue) *lua.LTable {
-	table := L.NewTable()
-
-	for _, value := range values {
-		table.Append(value)
-	}
-
-	return table
-}
-
 // GetLuaTableFromStrings returns a Lua table from a slice of strings
 func GetLuaTableFromStrings(L *lua.LState, stringList []string) *lua.LTable {
 	table := L.NewTable()

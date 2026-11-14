@@ -146,18 +146,6 @@ func (p *Process) Wait() (info *ExitInfo) {
 	return &p.exitInfo
 }
 
-// GetExitCode returns the exit code of the process. Blocks until the process ends
-func (p *Process) GetExitCode() ExitCode {
-	exitInfo := p.Wait()
-	return exitInfo.Code
-}
-
-// GetExitError returns the exit error of the process. Blocks until the process ends
-func (p *Process) GetExitError() error {
-	exitInfo := p.Wait()
-	return exitInfo.Error
-}
-
 // Kill a process. Non-blocking operation
 //
 // The `force` parameter will force the process to be killed (send SIGKILL instead of executing a graceful shutdown)
@@ -198,15 +186,6 @@ func (p *Process) Stop(force bool) (*ExitInfo, error) {
 
 	// Waits for the process to end
 	return p.Wait(), nil
-}
-
-// Exited checks if the process has exited. If the process has not been started yet, this method will return false
-func (p *Process) Exited() bool {
-	if p.cmd.ProcessState == nil {
-		return false
-	}
-
-	return p.cmd.ProcessState.Exited()
 }
 
 // Stopped checks if the process has been stopped by this interface. Returns false if an external command stopped the process (e.g.: `kill`

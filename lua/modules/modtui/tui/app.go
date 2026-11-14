@@ -20,7 +20,7 @@ func (t *Tui) focusArgumentsPage() {
 }
 
 // newApp creates a new application if not in raw stdout mode
-func (t *Tui) newApp() error {
+func (t *Tui) newApp() {
 	// Main application
 	t.app = app.Extend(tview.NewApplication())
 
@@ -59,6 +59,4 @@ func (t *Tui) newApp() error {
 
 	// Initial focus
 	t.focusMainPage()
-
-	return nil
 }

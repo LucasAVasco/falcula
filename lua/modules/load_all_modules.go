@@ -28,7 +28,7 @@ type AllModulesLoaderOptions struct {
 }
 
 // LoadAllModules loads all available modules
-func (l *Loader) LoadAllModules(config *AllModulesLoaderOptions) error {
+func (l *Loader) LoadAllModules(config *AllModulesLoaderOptions) {
 	// Tui module
 	tuiModuleConfig := modtui.Config{
 		RawMode:      config.RawMode,
@@ -73,8 +73,6 @@ func (l *Loader) LoadAllModules(config *AllModulesLoaderOptions) error {
 	l.LoadModule("falcula.compose", composeModule)
 	l.LoadModule("falcula.docker.compose", composeModule)
 	l.LoadModule("falcula.process", modprocess.New())
-
-	return nil
 }
 
 // getManagerCallbacks gets the callbacks for the manager module

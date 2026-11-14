@@ -17,7 +17,7 @@ func getIndent(str string, override string) string {
 }
 
 // Removes all text around the templates if it starts with '!{{'
-func SanitizeTemplate(str string, indent string) (string, error) {
+func SanitizeTemplate(str string, indent string) string {
 	output := strings.Builder{}
 
 	for i, line := range strings.Split(str, "\n") {
@@ -45,5 +45,5 @@ func SanitizeTemplate(str string, indent string) (string, error) {
 		output.WriteString(line)
 	}
 
-	return output.String(), nil
+	return output.String()
 }

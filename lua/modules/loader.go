@@ -20,12 +20,12 @@ type Loader struct {
 	modules       map[string]Module
 }
 
-func NewLoader(runtime *luaruntime.Runtime, config *ModulesConfig) (*Loader, error) {
+func NewLoader(runtime *luaruntime.Runtime, config *ModulesConfig) *Loader {
 	return &Loader{
 		runtime:       runtime,
 		modulesConfig: config,
 		modules:       make(map[string]Module),
-	}, nil
+	}
 }
 
 func (l *Loader) LoadModuleFromFunction(moduleName string, function func(name string, L *lua.LState) int) {
@@ -65,9 +65,4 @@ func (l *Loader) Close() error {
 	}
 
 	return nil
-}
-
-// GetModule returns the module with the given name
-func (l *Loader) GetModule(name string) Module {
-	return l.modules[name]
 }

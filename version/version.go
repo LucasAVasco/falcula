@@ -83,8 +83,3 @@ func (v *Version) String() string {
 func (v *Version) Compare(other *Version) int {
 	return Compare(v, other)
 }
-
-// CompareStrings compares the version string of 'v' with 'other'. Uses the same logic as the `Compare` function.
-func (v *Version) CompareStrings(other string) (int, error) {
-	return CompareStrings(v.String(), other)
-}

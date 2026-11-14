@@ -34,10 +34,6 @@ func Up(opts *process.Options, composeFile string, args ...string) (*process.Pro
 	return genericDockerComposeCommand(opts, composeFile, "up", args...)
 }
 
-func Stop(opts *process.Options, composeFile string, args ...string) (*process.Process, error) {
-	return genericDockerComposeCommand(opts, composeFile, "stop", args...)
-}
-
 func Down(opts *process.Options, composeFile string, args ...string) (*process.Process, error) {
 	return genericDockerComposeCommand(opts, composeFile, "down", args...)
 }

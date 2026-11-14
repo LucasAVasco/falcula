@@ -60,7 +60,3 @@ func (m *Module) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 
 	return nil
 }
-
-func (m *Module) Close() error {
-	return nil
-}

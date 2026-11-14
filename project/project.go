@@ -342,15 +342,6 @@ func (p *Project) GetAllTasks() (map[string]*Task, error) {
 	return tasks, nil
 }
 
-// GetTasksNames returns all the tasks names in the current project. Does not include tasks from child projects.
-func (p *Project) GetTasksNames() []string {
-	names := make([]string, 0, len(p.Tasks))
-	for name := range p.Tasks {
-		names = append(names, name)
-	}
-	return names
-}
-
 // GetAllTasksNames returns all the tasks names in the current project and its children projects. Similar to `GetTasksNames` but is
 // recursive.
 func (p *Project) GetAllTasksNames() ([]string, error) {

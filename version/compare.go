@@ -22,16 +22,3 @@ func Compare(a, b *Version) int {
 
 	return 0
 }
-
-// CompareStrings compares two version strings. Uses the same logic as the `Compare` function.
-func CompareStrings(a, b string) (int, error) {
-	av, err := FromString(a)
-	if err != nil {
-		return 0, err
-	}
-	bv, err := FromString(b)
-	if err != nil {
-		return 0, err
-	}
-	return Compare(av, bv), nil
-}

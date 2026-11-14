@@ -37,16 +37,14 @@ type Tui struct {
 }
 
 // New creates a new text user interface
-func New(config *Config) (*Tui, error) {
+func New(config *Config) *Tui {
 	if config.OnSelectArgs == nil {
 		config.OnSelectArgs = func(args []string) {}
 	}
 
-	t := Tui{
+	return &Tui{
 		config: config,
 	}
-
-	return &t, nil
 }
 
 // Close the text user interface. Can be called multiple times.
@@ -60,10 +58,7 @@ func (t *Tui) Show() error {
 	defer t.mutex.Unlock()
 
 	if t.app == nil {
-		err := t.newApp()
-		if err != nil {
-			return fmt.Errorf("error creating 'tview' application: %w", err)
-		}
+		t.newApp()
 
 		for _, manager := range t.config.Runtime.GetManagers() {
 			err := t.AddManagerToSidebar(manager)
