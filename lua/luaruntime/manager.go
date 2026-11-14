@@ -7,35 +7,47 @@ import (
 	"github.com/LucasAVasco/falcula/service/manager"
 )
 
-// AddManager adds a service manager to the runtime list
+// AddManager adds a service manager to the runtime list. Safe for concurrent use
 func (r *Runtime) AddManager(manager *manager.Manager) {
+	r.managersMutex.Lock()
+	defer r.managersMutex.Unlock()
+
 	r.managers = append(r.managers, manager)
 }
 
-// GetManagers gets the list of service managers in the runtime list
+// GetManagers gets a copy of the list of service managers in the runtime list. Safe for concurrent use
 func (r *Runtime) GetManagers() []*manager.Manager {
-	return r.managers
+	r.managersMutex.Lock()
+	defer r.managersMutex.Unlock()
+
+	return slices.Clone(r.managers)
 }
 
-// RemoveManager removes a service manager from the runtime list
+// RemoveManager removes a service manager from the runtime list. Safe for concurrent use
 func (r *Runtime) RemoveManager(man *manager.Manager) {
-	index := slices.Index(r.managers, man)
-	if index < 0 {
-		return
-	}
-	r.managers = slices.Delete(r.managers, index, index+1)
+	r.managersMutex.Lock()
+	defer r.managersMutex.Unlock()
+
+	r.managers = slices.DeleteFunc(r.managers, func(m *manager.Manager) bool {
+		return m == man
+	})
 }
 
-func (r *Runtime) closeAllManagersWithoutLock() {
+// closeAllManagers closes all service managers and removes them from the runtime list. Safe for concurrent use
+func (r *Runtime) closeAllManagers() {
 	r.onSetScriptCurrentArgs([]string{})
 	r.onSetScriptAvailableArgs([][]string{})
 
-	for _, man := range r.managers {
+	// Takes the managers out of the list before closing them (closing may take a while and must not block the list)
+	r.managersMutex.Lock()
+	managers := r.managers
+	r.managers = nil
+	r.managersMutex.Unlock()
+
+	for _, man := range managers {
 		err := man.Close(true, nil)
 		if err != nil {
 			r.Logger.LogError(fmt.Errorf("error closing manager '%s': %w", man.GetName(), err))
 		}
 	}
-
-	r.managers = make([]*manager.Manager, 0)
 }

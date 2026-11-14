@@ -29,54 +29,62 @@ func (a *App) runLua(config *runLuaConfig) error {
 		if err != nil || !reRun {
 			return err
 		}
+
+		// The previous script may have left anything in the Lua state. Runs the next one in a clean state
+		config.Runtime.ResetLuaState()
 	}
 }
 
 // runLuaOnce runs the Lua code or file of the configuration and waits for the user to close the TUI or select new arguments. Returns true
-// if the user selected new arguments (the configuration is updated with them)
+// if the user selected new arguments (the configuration is updated with them).
+//
+// NOTE(LucasAVasco): the TUI selects the arguments in its own goroutine. It only interrupts the script (stops its services and aborts it),
+// because the Lua state can only be closed or reset by this goroutine, after the script returns
 func (a *App) runLuaOnce(config *runLuaConfig) (bool, error) {
-	var reRun atomic.Bool
-	var loader *modules.Loader
+	var selectedArgs atomic.Pointer[[]string] // Arguments selected by the user to re-run the script. Nil if not selected
+	canReRun := config.File != ""             // Only Lua files can be re-run with new arguments
 
-	loader = modules.LoadAllModules(config.Runtime, &modules.AllModulesLoaderOptions{
+	loader := modules.LoadAllModules(config.Runtime, &modules.AllModulesLoaderOptions{
 		RawMode: a.rawMode,
 		OnSelectArgs: func(newArgs []string) {
-			// Only Lua files can be re-run with new arguments
-			if config.File == "" {
-				return
-			}
-			defer reRun.Store(true)
-
-			config.File = config.Runtime.GetLastExecutedFile()
-			config.Args = newArgs
-
-			err := loader.Close()
-			if err != nil {
-				config.Runtime.Logger.LogError(fmt.Errorf("error closing Lua modules loader: %w", err))
-				config.Runtime.CloseLuaState()
+			if !canReRun {
 				return
 			}
 
-			config.Runtime.ResetLuaState()
+			// NOTE(LucasAVasco): the arguments are only published after the interruption ends, so the next run can not be affected by it
+			config.Runtime.Interrupt()
+			selectedArgs.Store(&newArgs)
 		},
 	})
-	defer loader.Close()
+	defer func() {
+		err := loader.Close()
+		if err != nil {
+			config.Runtime.Logger.LogError(fmt.Errorf("error closing Lua modules loader: %w", err))
+		}
+	}()
 
 	// Running the code or file
+	var err error
 	if config.File != "" {
-		err := config.Runtime.RunFile(config.File, config.Args...)
+		err = config.Runtime.RunFile(config.File, config.Args...)
 		if err != nil {
-			config.Runtime.Logger.LogError(fmt.Errorf("error running Lua file '%s': %w", config.File, err))
+			err = fmt.Errorf("error running Lua file '%s': %w", config.File, err)
 		}
 	} else {
-		err := config.Runtime.Run(config.Code, config.Args...)
+		err = config.Runtime.Run(config.Code, config.Args...)
 		if err != nil {
-			config.Runtime.Logger.LogError(fmt.Errorf("error running Lua code: %w", err))
+			err = fmt.Errorf("error running Lua code: %w", err)
 		}
 	}
 
+	// An interrupted script fails on purpose and must not run its subtask
+	interrupted := config.Runtime.Interrupted()
+	if err != nil && !interrupted {
+		config.Runtime.Logger.LogError(err)
+	}
+
 	// Calling the after run callback
-	if config.AfterRun != nil {
+	if config.AfterRun != nil && !interrupted {
 		err := config.AfterRun(config.Runtime)
 		if err != nil {
 			return false, fmt.Errorf("error calling callback after running Lua: %w", err)
@@ -84,9 +92,16 @@ func (a *App) runLuaOnce(config *runLuaConfig) (bool, error) {
 	}
 
 	// Wait until the TUI is closed or the user selects new arguments
-	for !reRun.Load() && modtui.IsTuiVisible() {
+	for selectedArgs.Load() == nil && modtui.IsTuiVisible() {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	return reRun.Load(), nil
+	newArgs := selectedArgs.Load()
+	if newArgs == nil {
+		return false, nil
+	}
+
+	config.File = config.Runtime.GetLastExecutedFile()
+	config.Args = *newArgs
+	return true, nil
 }

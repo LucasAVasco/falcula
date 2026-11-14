@@ -1,6 +1,7 @@
 package modfs
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -56,5 +57,39 @@ func TestWatchParallelRunsCallbacksAndReturnsTheirErrors(t *testing.T) {
 	`)
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestWatchReturnsWhenTheScriptIsInterrupted(t *testing.T) {
+	dir := t.TempDir()
+
+	L := lua.NewState()
+	defer L.Close()
+	L.PreloadModule("fs", func(L *lua.LState) int {
+		mod := L.NewTable()
+		if err := New().Loader(L, "fs", mod); err != nil {
+			t.Fatal(err)
+		}
+		L.Push(mod)
+		return 1
+	})
+	L.SetGlobal("dir", lua.LString(dir))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	L.SetContext(ctx)
+	time.AfterFunc(200*time.Millisecond, cancel)
+
+	done := make(chan error, 1)
+	go func() {
+		done <- L.DoString(`require("fs").watch({ dir }, function() end)`)
+	}()
+
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("expected an error after the interruption")
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("fs.watch did not return after the interruption")
 	}
 }

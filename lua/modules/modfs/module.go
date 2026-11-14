@@ -131,9 +131,18 @@ func watchAll(L *lua.LState, entries []WatchParallelEntry) error {
 		}()
 	}
 
+	// Stops watching if the script is interrupted (see `LState.SetContext`)
+	var interrupted <-chan struct{} // Nil channel (blocks forever) if there is no context
+	if ctx := L.Context(); ctx != nil {
+		interrupted = ctx.Done()
+	}
+
 	// Calls the callbacks while waiting
 	for remaining := len(watchers); remaining > 0; {
 		select {
+		case <-interrupted:
+			return errors.New("the script was interrupted")
+
 		case call := <-calls:
 			L.Push(call.callback)
 			L.Push(lua.LString(call.file))

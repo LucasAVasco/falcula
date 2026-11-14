@@ -14,6 +14,9 @@ import (
 // The error returned when the user tries to execute a function but the service is in an status that does not allow it
 var ErrInvalidStatus = errors.New("invalid status")
 
+// The error returned when the user tries to wait or abort a step that is still being created
+var ErrStepNotAvailable = errors.New("step not available")
+
 // exitInfoHasError returns true if the exitInfo has an error. If it is nil, it returns false
 func exitInfoHasError(exitInfo *iface.ExitInfo) bool {
 	if exitInfo == nil {
@@ -98,12 +101,24 @@ func (e *EnhancedService) setStatus(status status.Status) {
 	e.callbacks.OnServiceStatusChanged(e)
 }
 
-// getStep returns the current step (preparing or running)
-func (e *EnhancedService) getStep() iface.Step {
+// getStep returns the current step (preparing or running). Returns an error if the step is not available yet (the service is starting it
+// in another goroutine)
+func (e *EnhancedService) getStep() (iface.Step, error) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 
-	return e.step
+	if e.step == nil {
+		return nil, fmt.Errorf("the step of service '%s' is not available yet: %w", e.svc.GetName(), ErrStepNotAvailable)
+	}
+	return e.step, nil
+}
+
+// clearStep removes the current step
+func (e *EnhancedService) clearStep() {
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
+
+	e.step = nil
 }
 
 // setStep sets the current step. Uses an empty step if it is nil
@@ -158,6 +173,7 @@ func (e *EnhancedService) StartPrepare() error {
 	}
 
 	// Starts the preparing step
+	e.clearStep() // The previous step is finished. The new one is set after it is created
 	e.setStatus(status.Preparing)
 	step, err := e.svc.Prepare(e.onStepExit(status.Ready, status.PrepareAborted))
 	if err != nil {
@@ -184,7 +200,12 @@ func (e *EnhancedService) WaitPrepare() (*iface.ExitInfo, error) {
 		)
 	}
 
-	exitInfo, err := e.getStep().Wait()
+	step, err := e.getStep()
+	if err != nil {
+		return nil, err
+	}
+
+	exitInfo, err := step.Wait()
 	return exitInfo, e.checkStepResult("waiting prepare step", exitInfo, err)
 }
 
@@ -225,7 +246,12 @@ func (e *EnhancedService) AbortPrepare(force bool) (*iface.ExitInfo, error) {
 	}
 
 	e.setStatus(status.AbortingPrepare)
-	exitInfo, err := e.getStep().Abort(force)
+	step, err := e.getStep()
+	if err != nil {
+		return nil, err
+	}
+
+	exitInfo, err := step.Abort(force)
 	return exitInfo, e.checkStepResult("aborting prepare step", exitInfo, err)
 }
 
@@ -240,6 +266,7 @@ func (e *EnhancedService) Start() error {
 	}
 
 	// Starts the main step
+	e.clearStep() // The previous step is finished. The new one is set after it is created
 	e.setStatus(status.Running)
 	step, err := e.svc.Start(e.onStepExit(status.Ended, status.Stopped))
 	if err != nil {
@@ -266,7 +293,12 @@ func (e *EnhancedService) Wait() (*iface.ExitInfo, error) {
 		)
 	}
 
-	return e.getStep().Wait()
+	step, err := e.getStep()
+	if err != nil {
+		return nil, err
+	}
+
+	return step.Wait()
 }
 
 // Run starts the main step and waits it to finish. Returns its exit information if any
@@ -303,7 +335,12 @@ func (e *EnhancedService) Stop(force bool) (*iface.ExitInfo, error) {
 
 	// Stops the waiter
 	e.setStatus(status.Stopping)
-	exitInfo, err := e.getStep().Abort(force)
+	step, err := e.getStep()
+	if err != nil {
+		return nil, err
+	}
+
+	exitInfo, err := step.Abort(force)
 	if err := e.checkStepResult("aborting running step", exitInfo, err); err != nil {
 		return exitInfo, err
 	}
