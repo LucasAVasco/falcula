@@ -4,6 +4,7 @@ package sidebar
 import (
 	"fmt"
 	"slices"
+	"sync/atomic"
 
 	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/app"
 	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/keybinds"
@@ -23,8 +24,9 @@ type Sidebar struct {
 
 	// Widgets
 
-	tree *tview.TreeView
-	root *tview.TreeNode
+	tree     *tview.TreeView
+	root     *tview.TreeNode
+	selected atomic.Pointer[tview.TreeNode] // Selected node (its text has no colors, they would be hard to read on the selection background)
 
 	// Callbacks
 	OnError func(err error)
@@ -46,6 +48,8 @@ func New(app *app.App, logFilePath string, th *theme.Theme) *Sidebar {
 	s.root = s.newNode("Service managers")
 	s.tree.SetRoot(s.root)
 	s.tree.SetCurrentNode(s.root)
+	s.selected.Store(s.root)
+	s.tree.SetChangedFunc(s.onSelectionChanged) // Called in the application goroutine before drawing the nodes
 	s.tree.SetBorder(true).SetTitle("Service managers")
 	th.FocusBorder(s.tree.Box)
 
@@ -182,10 +186,32 @@ func (s *Sidebar) getExistingServiceNode(
 	return managerNode, serviceNode, nil
 }
 
-// generateServiceText gets the text to show in the service node
-func (s *Sidebar) generateServiceText(svc *enhanced.EnhancedService) string {
+// generateServiceText gets the text to show in the service node. The status of a selected node is not colored (the selection style is
+// used, the status color would be hard to read on the selection background)
+func (s *Sidebar) generateServiceText(svc *enhanced.EnhancedService, selected bool) string {
 	svcStatus := svc.GetStatus()
-	return tview.Escape(svc.GetName()) + " (" + theme.Colorize(svcStatus.String(), s.theme.StatusColor(svcStatus)) + ")"
+	statusText := svcStatus.String()
+	if !selected {
+		statusText = theme.Colorize(statusText, s.theme.StatusColor(svcStatus))
+	}
+	return tview.Escape(svc.GetName()) + " (" + statusText + ")"
+}
+
+// updateServiceNodeText updates the text of a service node. Does nothing if the node is not a service node
+func (s *Sidebar) updateServiceNodeText(node *tview.TreeNode) {
+	if node == nil {
+		return
+	}
+	if svc, ok := node.GetReference().(*enhanced.EnhancedService); ok {
+		node.SetText(s.generateServiceText(svc, node == s.selected.Load()))
+	}
+}
+
+// onSelectionChanged updates the texts of the previous and the new selected nodes
+func (s *Sidebar) onSelectionChanged(node *tview.TreeNode) {
+	previous := s.selected.Swap(node)
+	s.updateServiceNodeText(previous)
+	s.updateServiceNodeText(node)
 }
 
 // AddService adds a service to the side bar
@@ -201,8 +227,8 @@ func (s *Sidebar) AddService(man *manager.Manager, svc *enhanced.EnhancedService
 	}
 
 	// Creates the new service node and adds it to the manager node as a child
-	text := s.generateServiceText(svc)
-	newNode := s.newNode(text).SetReference(svc).SetSelectable(true)
+	newNode := s.newNode("").SetReference(svc).SetSelectable(true)
+	s.updateServiceNodeText(newNode)
 	managerNode.AddChild(newNode)
 
 	// Updates the UI
@@ -235,7 +261,7 @@ func (s *Sidebar) UpdateServiceStatus(man *manager.Manager, svc *enhanced.Enhanc
 	}
 
 	// Updates the service text
-	node.SetText(s.generateServiceText(svc))
+	s.updateServiceNodeText(node)
 
 	// Updates the UI
 	s.app.Draw()
