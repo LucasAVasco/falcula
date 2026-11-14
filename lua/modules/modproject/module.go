@@ -27,19 +27,17 @@ func New() *Loader {
 func (l *Loader) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 	l.project = l.Config.Runtime.GetProject()
 
-	onError := l.Config.Runtime.Logger.GetOnErrorWithoutReturn()
-
-	projectClass, err := luaclass.Register(L, mod, &luaclass.Info{Name: "Project"}, onError)
+	projectClass, err := luaclass.Register(L, mod, &luaclass.Info{Name: "Project"})
 	if err != nil {
 		return fmt.Errorf("error registering class of '%s' module: %w", name, err)
 	}
 
-	taskClass, err := luaclass.Register(L, mod, &luaclass.Info{Name: "Task"}, onError)
+	taskClass, err := luaclass.Register(L, mod, &luaclass.Info{Name: "Task"})
 	if err != nil {
 		return fmt.Errorf("error registering class of '%s' module: %w", name, err)
 	}
 
-	commandClass, err := luaclass.Register(L, mod, &luaclass.Info{Name: "Command"}, onError)
+	commandClass, err := luaclass.Register(L, mod, &luaclass.Info{Name: "Command"})
 	if err != nil {
 		return fmt.Errorf("error registering class of '%s' module: %w", name, err)
 	}

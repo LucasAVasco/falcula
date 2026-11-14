@@ -41,7 +41,12 @@ func (a *App) RunTask(task *project.Task, subTask string, args ...string) error 
 	if err != nil {
 		return fmt.Errorf("error creating runtime: %w", err)
 	}
-	defer runtime.Close()
+	defer func() {
+		err := runtime.Close()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error closing runtime: %v\n", err)
+		}
+	}()
 
 	// modtui does not closes the TUI when it is closed. The TUI is persistent across runs. Need to close it manually
 	defer modtui.ClosePersistentTui()

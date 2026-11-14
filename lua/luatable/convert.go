@@ -19,7 +19,7 @@ func GetValuesFromLuaTable(table *lua.LTable) []lua.LValue {
 func GetStringsFromLuaTable(table *lua.LTable) []string {
 	result := make([]string, 0, table.Len())
 	table.ForEach(func(key lua.LValue, value lua.LValue) {
-		result = append(result, value.(lua.LString).String())
+		result = append(result, value.String()) // Same as `tostring`. Supports numbers
 	})
 
 	return result
@@ -34,7 +34,7 @@ func GetStringsFromLuaTableThatKeyIsNumber(table *lua.LTable) []string {
 			return
 		}
 
-		result = append(result, value.(lua.LString).String())
+		result = append(result, value.String()) // Same as `tostring`. Supports numbers
 	})
 
 	return result

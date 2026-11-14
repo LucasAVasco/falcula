@@ -1,6 +1,8 @@
 package modmanager
 
 import (
+	"fmt"
+
 	"github.com/LucasAVasco/falcula/lua/luaclass"
 	"github.com/LucasAVasco/falcula/lua/luadata"
 	"github.com/LucasAVasco/falcula/lua/luaerror"
@@ -13,7 +15,18 @@ import (
 
 // getManager gets the manager when called inside a method. Must not be used outside a method
 func getManager(L *lua.LState) *manager.Manager {
-	return luaclass.GetAttribute(L, "_manager").(*manager.Manager)
+	return luaclass.GetAttributeOf[*manager.Manager](L, "_manager")
+}
+
+// serviceFromValue gets the service of a Lua value. Returns false if the value is not a service
+func serviceFromValue(value lua.LValue) (iface.Service, bool) {
+	userData, ok := value.(*lua.LUserData)
+	if !ok {
+		return nil, false
+	}
+
+	svc, ok := userData.Value.(iface.Service)
+	return svc, ok
 }
 
 // returnErrorMessage returns an error message if err is not nil. Must not be used outside a method
@@ -38,7 +51,10 @@ func (m *Module) GetMethods() map[string]lua.LGFunction {
 	return map[string]lua.LGFunction{
 		"add_service": func(L *lua.LState) int {
 			man := getManager(L)
-			svc := luadata.GetValueFromArgs(L, 2).(iface.Service)
+			svc, ok := luadata.GetValueFromArgs(L, 2).(iface.Service)
+			if !ok {
+				L.ArgError(2, "service expected")
+			}
 			enhancedService := man.AddService(svc, createServiceCallbacks(man))
 			m.callbacks.OnAddService(man, enhancedService)
 			return 0
@@ -46,10 +62,13 @@ func (m *Module) GetMethods() map[string]lua.LGFunction {
 
 		"add_services": func(L *lua.LState) int {
 			man := getManager(L)
-			services := L.ToTable(2)
+			services := L.CheckTable(2)
 
-			for i := 0; i < services.Len(); i++ {
-				svc := services.RawGetInt(i + 1).(*lua.LUserData).Value.(iface.Service)
+			for i := 1; i <= services.Len(); i++ {
+				svc, ok := serviceFromValue(services.RawGetInt(i))
+				if !ok {
+					L.ArgError(2, fmt.Sprintf("list of services expected (element %d is not a service)", i))
+				}
 				enhancedService := man.AddService(svc, createServiceCallbacks(man))
 				m.callbacks.OnAddService(man, enhancedService)
 			}

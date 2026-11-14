@@ -2,6 +2,8 @@
 package modcmd
 
 import (
+	"fmt"
+
 	"github.com/LucasAVasco/falcula/lua/luatable"
 	"github.com/LucasAVasco/falcula/lua/modules/base"
 
@@ -11,22 +13,24 @@ import (
 // Module is a module that provides command line arguments to Falcula
 type Module struct {
 	base.BaseModule
-	cmdArgs lua.LTable // The command line arguments
+	cmdArgs *lua.LTable // The command line arguments
 }
 
 func New() *Module {
-	m := Module{}
-
-	m.cmdArgs = lua.LTable{}
-
-	return &m
+	return &Module{
+		cmdArgs: &lua.LTable{Metatable: lua.LNil}, // NOTE(LucasAVasco): a zero value table has a nil meta-table, which is invalid
+	}
 }
 
 func (m *Module) SetCurrentScriptArgs(args []string) {
-	// Removes the old arguments
-	m.cmdArgs.ForEach(func(l1, l2 lua.LValue) {
-		m.cmdArgs.RawSet(l1, lua.LNil)
+	// Removes the old arguments (collects the keys first, because the table must not be modified while iterating it)
+	keys := []lua.LValue{}
+	m.cmdArgs.ForEach(func(key, _ lua.LValue) {
+		keys = append(keys, key)
 	})
+	for _, key := range keys {
+		m.cmdArgs.RawSet(key, lua.LNil)
+	}
 
 	// Sets the new arguments
 	for _, arg := range args {
@@ -35,14 +39,17 @@ func (m *Module) SetCurrentScriptArgs(args []string) {
 }
 
 func (m *Module) Loader(L *lua.LState, name string, mod *lua.LTable) error {
-	L.SetField(mod, "args", &m.cmdArgs)
+	L.SetField(mod, "args", m.cmdArgs)
 
 	L.SetField(mod, "set_available_args", L.NewFunction(func(L *lua.LState) int {
-		argsList := L.ToTable(1)
+		argsList := L.CheckTable(1)
 		availableCmdArgs := [][]string{}
 
-		for i := 0; i < argsList.Len(); i++ {
-			args := argsList.RawGetInt(i + 1).(*lua.LTable)
+		for i := 1; i <= argsList.Len(); i++ {
+			args, ok := argsList.RawGetInt(i).(*lua.LTable)
+			if !ok {
+				L.ArgError(1, fmt.Sprintf("list of argument lists expected (element %d is not a table)", i))
+			}
 
 			availableCmdArgs = append(availableCmdArgs, luatable.GetStringsFromLuaTable(args))
 		}

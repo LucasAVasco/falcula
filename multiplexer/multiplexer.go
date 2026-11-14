@@ -27,11 +27,6 @@ func New(callback Callback) *Multiplexer {
 	return &m
 }
 
-// Close the multiplexer. Does not close the log file. The user must close the log file manually.
-func (m *Multiplexer) Close() error {
-	return nil
-}
-
 // NewClient generates a new client. The arguments of this functions are metadata that the client can access. The level has not a specific
 // format, but you should avoid using special characters and spaces (good examples: 'stdout', 'stderr', 'info', 'error', etc.).
 func (m *Multiplexer) NewClient(name string, level string, color *color.Color) *Client {

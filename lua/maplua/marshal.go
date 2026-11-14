@@ -121,9 +121,15 @@ func Marshal(value any) (lua.LValue, error) {
 	}
 }
 
+// newTable creates an empty Lua table without a Lua state. Equivalent to `LState.NewTable()`
+func newTable() *lua.LTable {
+	// NOTE(LucasAVasco): a zero value table has a nil meta-table instead of `lua.LNil`, which crashes some Lua functions (e.g. `getmetatable`)
+	return &lua.LTable{Metatable: lua.LNil}
+}
+
 // marshalSlice marshals a slice or an array to a Lua table
 func marshalSlice(v reflect.Value) (*lua.LTable, error) {
-	slice := lua.LTable{}
+	slice := newTable()
 	for i := 0; i < v.Len(); i++ {
 		element, err := Marshal(v.Index(i).Interface())
 		if err != nil {
@@ -132,12 +138,12 @@ func marshalSlice(v reflect.Value) (*lua.LTable, error) {
 		slice.RawSetInt(i+1, element)
 	}
 
-	return &slice, nil
+	return slice, nil
 }
 
 // marshalMap marshals a map to a Lua table
 func marshalMap(v reflect.Value) (*lua.LTable, error) {
-	table := lua.LTable{}
+	table := newTable()
 	for _, key := range v.MapKeys() {
 		element, err := Marshal(v.MapIndex(key).Interface())
 		if err != nil {
@@ -155,12 +161,12 @@ func marshalMap(v reflect.Value) (*lua.LTable, error) {
 		}
 	}
 
-	return &table, nil
+	return table, nil
 }
 
 // marshalStruct marshals a struct to a Lua table
 func marshalStruct(t reflect.Type, v reflect.Value) (*lua.LTable, error) {
-	table := lua.LTable{}
+	table := newTable()
 	for i := 0; i < v.NumField(); i++ {
 		if !v.Field(i).CanInterface() {
 			continue
@@ -204,5 +210,5 @@ func marshalStruct(t reflect.Type, v reflect.Value) (*lua.LTable, error) {
 		}
 	}
 
-	return &table, nil
+	return table, nil
 }

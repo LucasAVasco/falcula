@@ -11,7 +11,7 @@ import (
 
 // getTemplateFuncs gets the functions of the template object when called inside a method
 func getTemplateFuncs(L *lua.LState) template.FuncMap {
-	return luaclass.GetAttribute(L, "_funcs").(template.FuncMap)
+	return luaclass.GetAttributeOf[template.FuncMap](L, "_funcs")
 }
 
 var templateClassFunctions = func() map[string]lua.LGFunction {

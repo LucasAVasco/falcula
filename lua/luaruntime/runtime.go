@@ -59,9 +59,15 @@ func New(proj *project.Project, onRunTask OnRunTask) (*Runtime, error) {
 	return &r, nil
 }
 
-// Close closes the runtime. Can be called multiple times
+// Close closes the runtime (the Lua state, its service managers and the logger). Can be called multiple times
 func (r *Runtime) Close() error {
 	r.CloseLuaState()
+
+	err := r.Logger.Close()
+	if err != nil {
+		return fmt.Errorf("error closing logger: %w", err)
+	}
+
 	return nil
 }
 

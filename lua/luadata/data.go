@@ -12,7 +12,7 @@ func NewUserData(L *lua.LState, value any) *lua.LUserData {
 	return data
 }
 
-// GetValueFromArgs returns the value of the argument at the given index
+// GetValueFromArgs returns the value of the user data argument at the given index. Raises a Lua error if the argument is not a user data
 func GetValueFromArgs(L *lua.LState, index int) any {
-	return L.Get(index).(*lua.LUserData).Value
+	return L.CheckUserData(index).Value
 }

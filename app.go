@@ -23,20 +23,14 @@ func NewApp(rawMode bool) (*App, error) {
 	}
 
 	// Invoke directory
-	invokeDir, err := os.Getwd()
+	invokeDir, err := getWorkingDir()
 	if err != nil {
-		return nil, fmt.Errorf("error getting current working directory (invoke directory): %w", err)
+		return nil, fmt.Errorf("error getting invoke directory: %w", err)
 	}
-
-	invokeDir, err = filepath.Abs(invokeDir)
-	if err != nil {
-		return nil, fmt.Errorf("error getting absolute path of current working directory (invoke directory): %w", err)
-	}
-
 	a.invokeDir = invokeDir
 
 	// Project
-	projectDir, err := getProjectDir()
+	projectDir, err := getProjectDir(invokeDir)
 	if err != nil {
 		return nil, fmt.Errorf("error getting project file path: %w", err)
 	}
@@ -49,18 +43,24 @@ func NewApp(rawMode bool) (*App, error) {
 	return a, nil
 }
 
-// getProjectDir returns the path to the falcula configuration directory that the application should use
-func getProjectDir() (string, error) {
-	currentDir, err := os.Getwd()
+// getWorkingDir returns the absolute path of the current working directory
+func getWorkingDir() (string, error) {
+	dir, err := os.Getwd()
 	if err != nil {
 		return "", fmt.Errorf("error getting current working directory: %w", err)
 	}
 
-	currentDir, err = filepath.Abs(currentDir)
+	dir, err = filepath.Abs(dir)
 	if err != nil {
 		return "", fmt.Errorf("error getting absolute path of current working directory: %w", err)
 	}
 
+	return dir, nil
+}
+
+// getProjectDir returns the path to the falcula configuration directory that the application should use. Searches from the start
+// directory (absolute path) to the file system root
+func getProjectDir(currentDir string) (string, error) {
 	// Iterate from the current directory to the root searching for a 'falcula.yaml' file
 	for {
 		hasConfigFile, err := project.HasConfigFile(currentDir)
@@ -74,11 +74,11 @@ func getProjectDir() (string, error) {
 		}
 
 		// At root (no project file found)
-		if currentDir == "/" {
+		parentDir := filepath.Dir(currentDir)
+		if parentDir == currentDir {
 			return "", fmt.Errorf("project file not found")
 		}
 
-		// Next directory
-		currentDir = filepath.Dir(currentDir)
+		currentDir = parentDir
 	}
 }

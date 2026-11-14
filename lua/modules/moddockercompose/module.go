@@ -55,7 +55,7 @@ func (l *Loader) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 		},
 		Methods: methods,
 	}
-	_, err := luaclass.Register(L, mod, &info, l.Config.Runtime.Logger.GetOnErrorWithoutReturn())
+	_, err := luaclass.Register(L, mod, &info)
 	if err != nil {
 		return fmt.Errorf("error registering class of '%s' module: %w", name, err)
 	}
@@ -65,7 +65,7 @@ func (l *Loader) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 
 // getProvider gets the docker compose provider when called inside a method. Must not be used outside a method
 func getProvider(L *lua.LState) *dockercompose.Provider {
-	return luaclass.GetAttribute(L, "_provider").(*dockercompose.Provider)
+	return luaclass.GetAttributeOf[*dockercompose.Provider](L, "_provider")
 }
 
 var methods = map[string]lua.LGFunction{

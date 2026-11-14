@@ -78,14 +78,8 @@ func New() (*Logger, error) {
 
 // Close closes the logger. Can be called multiple times
 func (l *Logger) Close() error {
-	// Multiplexer
-	if l.servicesMultiplexer != nil {
-		err := l.servicesMultiplexer.Close()
-		if err != nil {
-			return fmt.Errorf("error closing multiplexer: %w", err)
-		}
-		l.servicesMultiplexer = nil
-	}
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
 
 	// Log file
 	if l.logFile != nil {
@@ -109,8 +103,14 @@ func (l *Logger) Close() error {
 	return nil
 }
 
-// GetLogFilePath returns the path to the log file
+// GetLogFilePath returns the path to the log file. Returns "" if the logger is closed
 func (l *Logger) GetLogFilePath() string {
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
+
+	if l.logFile == nil {
+		return ""
+	}
 	return l.logFile.Name()
 }
 
@@ -177,13 +177,6 @@ func (l *Logger) LogError(err error) (int, error) {
 	defer l.mutex.Unlock()
 
 	return l.onErrorLog(err)
-}
-
-// GetOnErrorWithoutReturn returns a function that logs an error and discards the return value
-func (l *Logger) GetOnErrorWithoutReturn() func(error) {
-	return func(err error) {
-		_, _ = l.LogError(err)
-	}
 }
 
 // Append appends messages to the debug log if they are not errors. If they are errors, they are logged to the error log

@@ -37,7 +37,7 @@ func FromString(version string) (*Version, error) {
 		version = version[1:]
 	}
 
-	split := strings.Split(version, ".")
+	split := strings.SplitN(version, ".", 3) // The suffix may also contain dots (e.g. pseudo-versions)
 	if len(split) < 3 {
 		return nil, fmt.Errorf("invalid version string (must be in the format 'major.minor.patch'): %s", version)
 	}

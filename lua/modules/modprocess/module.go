@@ -41,11 +41,14 @@ func getProcessCommandFromLuaValue(value lua.LValue) (*process.Command, error) {
 		command.Command = luatable.GetStringsFromLuaTableThatKeyIsNumber(value)
 
 		if dir := value.RawGetString("dir"); dir != lua.LNil {
-			command.Dir = dir.(lua.LString).String()
+			if dir.Type() != lua.LTString {
+				return nil, fmt.Errorf("the 'dir' field of the command must be a string, but got %s", dir.Type())
+			}
+			command.Dir = dir.String()
 		}
 
 	default:
-		return nil, fmt.Errorf("invalid command type: %T", value)
+		return nil, fmt.Errorf("invalid command type: %s", value.Type())
 	}
 
 	return &command, nil
@@ -85,7 +88,7 @@ func (l *Loader) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 		},
 		Methods: methods,
 	}
-	_, err := luaclass.Register(L, mod, &info, l.Config.Runtime.Logger.GetOnErrorWithoutReturn())
+	_, err := luaclass.Register(L, mod, &info)
 	if err != nil {
 		return fmt.Errorf("error registering class of '%s' module: %w", name, err)
 	}
@@ -95,7 +98,7 @@ func (l *Loader) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 
 // getProvider gets the process provider when called inside a method. Must not be used outside a method
 func getProvider(L *lua.LState) *process.Provider {
-	return luaclass.GetAttribute(L, "_provider").(*process.Provider)
+	return luaclass.GetAttributeOf[*process.Provider](L, "_provider")
 }
 
 var methods = map[string]lua.LGFunction{

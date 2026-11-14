@@ -175,27 +175,22 @@ func (m *Manager) AbortPrepare(force bool, onServicePrepared enhanced.ExitStepCa
 		})
 }
 
-// Start starts the main step for each service
-func (m *Manager) Start(callback enhanced.ExitStepCallback) *waiter.Waiter {
-	callback = applyDefaultExitProcessCallback(callback)
+// Start starts the main step for each service and waits for it to end. The callback is called when each service ends
+func (m *Manager) Start(onServiceEnded enhanced.ExitStepCallback) *waiter.Waiter {
+	return m.forEachService("error running enhanced service '%s': %w", onServiceEnded, false,
+		func(svc *enhanced.EnhancedService) (*iface.ExitInfo, error) {
+			err := svc.Start()
+			if err != nil {
+				return nil, fmt.Errorf("error starting: %w", err)
+			}
 
-	return m.routineForEachService(func(svc *enhanced.EnhancedService) (*iface.ExitInfo, error) {
-		err := svc.Start()
-		if err != nil {
-			err = fmt.Errorf("error starting enhanced service '%s': %w", svc.GetName(), err)
-			callback(svc, nil, err)
-			return nil, err
-		}
+			exitInfo, err := svc.Wait()
+			if err != nil {
+				return exitInfo, fmt.Errorf("error waiting: %w", err)
+			}
 
-		exitInfo, err := svc.Wait()
-		if err != nil {
-			err = fmt.Errorf("error waiting enhanced service '%s': %w", svc.GetName(), err)
-			callback(svc, exitInfo, err)
-			return nil, err
-		}
-
-		return exitInfo, nil
-	})
+			return exitInfo, nil
+		})
 }
 
 // Wait waits the main step to finish for each service
@@ -224,7 +219,8 @@ func (m *Manager) Run(onServiceEnded enhanced.ExitStepCallback) error {
 	return nil
 }
 
-// RunSerial runs each service separately (e.g.: service 2 is only started after service 1 has ended)
+// RunSerial runs each service separately (e.g.: service 2 is only started after service 1 has ended). The `onServiceEnded` callback is
+// called when each service ends. Stops at the first service that fails
 func (m *Manager) RunSerial(onServicePrepared enhanced.ExitStepCallback, onServiceEnded enhanced.ExitStepCallback) error {
 	onServiceEnded = applyDefaultExitProcessCallback(onServiceEnded)
 
@@ -238,7 +234,10 @@ func (m *Manager) RunSerial(onServicePrepared enhanced.ExitStepCallback, onServi
 		exitInfo, err := svc.Run()
 		if err != nil {
 			err = fmt.Errorf("error running enhanced service '%s': %w", svc.GetName(), err)
-			onServiceEnded(svc, exitInfo, err)
+		}
+
+		onServiceEnded(svc, exitInfo, err)
+		if err != nil {
 			return err
 		}
 	}

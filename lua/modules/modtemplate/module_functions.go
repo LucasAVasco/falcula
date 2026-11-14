@@ -9,7 +9,11 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
-// getDataFromLuaTable gets the data to use in a template from a Lua value
+// getDataFromLuaTable gets the data to use in a template from a Lua value.
+//
+// NOTE(LucasAVasco): it does not use `maplua.Unmarshal` because templates need other rules: lists must be slices (not pointers to slices,
+// which the `index` template function does not support), tables with both list items and keys must keep their keys, and other values
+// (functions, user data, etc.) are converted to strings
 func getDataFromLuaTable(L *lua.LState, value lua.LValue) any {
 	switch value.Type() {
 	case lua.LTNil:
