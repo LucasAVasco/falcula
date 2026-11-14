@@ -174,7 +174,7 @@ func (s *Sidebar) getExistingServiceNode(
 
 // generateServiceText gets the text to show in the service node
 func (s *Sidebar) generateServiceText(svc *enhanced.EnhancedService) string {
-	return svc.GetName() + " (" + svc.GetStatus().ToString() + ")"
+	return svc.GetName() + " (" + svc.GetStatus().String() + ")"
 }
 
 // AddService adds a service to the side bar

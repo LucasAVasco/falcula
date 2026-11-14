@@ -35,10 +35,10 @@ func (w *enhancedWriter) WriteString(message string) error {
 
 // WriteIndent writes a number of indent bytes. indentLevel starts in 0
 func (w *enhancedWriter) WriteIndent(indentLevel uint) error {
-	identBytes := []byte("    ")
+	indentBytes := []byte("    ")
 
 	for range indentLevel {
-		err := w.Write(identBytes)
+		err := w.Write(indentBytes)
 		if err != nil {
 			return fmt.Errorf("error writing indent: %w", err)
 		}

@@ -152,7 +152,7 @@ func (e *EnhancedService) WaitPrepare() (*iface.ExitInfo, error) {
 		return nil, fmt.Errorf(
 			"service '%s' is not preparing or ready (current status: %s): %w",
 			e.GetName(),
-			e.status.ToString(),
+			e.status,
 			ErrInvalidStatus,
 		)
 	}
@@ -238,7 +238,7 @@ func (e *EnhancedService) Wait() (*iface.ExitInfo, error) {
 		return nil, fmt.Errorf(
 			"service '%s' is not running or ended (current status: %s): %w",
 			e.GetName(),
-			e.status.ToString(),
+			e.status,
 			ErrInvalidStatus,
 		)
 	}

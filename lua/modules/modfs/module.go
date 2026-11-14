@@ -49,7 +49,7 @@ func (m *Module) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 type WatchParallelEntry struct {
 	Files    []string             `lua:"files"`    // files to watch.
 	Callback *lua.LFunction       `lua:"callback"` // callback function. Will receive the file and the operation.
-	Opts     *watcher.WatcherOpts `lua:"opts"`     // watcher options.
+	Opts     *watcher.WatcherOpts `lua:"opts"`     // Watcher options.
 }
 
 var functions = map[string]lua.LGFunction{
@@ -64,20 +64,20 @@ var functions = map[string]lua.LGFunction{
 		}
 
 		// Create watcher
-		watcher, err := createWatcher(L, files, callback, &opts)
+		fileWatcher, err := createWatcher(L, files, callback, &opts)
 		if err != nil {
 			return luaerror.Push(L, 0, fmt.Errorf("error creating watcher: %w", err))
 		}
-		defer watcher.Close()
+		defer fileWatcher.Close()
 
 		// Wait for watcher to stop
-		err = watcher.Wait()
+		err = fileWatcher.Wait()
 		if err != nil {
 			return luaerror.Push(L, 0, fmt.Errorf("error waiting for watcher: %w", err))
 		}
 
 		// Close watcher
-		err = watcher.Close()
+		err = fileWatcher.Close()
 		if err != nil {
 			return luaerror.Push(L, 0, fmt.Errorf("error closing watcher: %w", err))
 		}
@@ -95,20 +95,20 @@ var functions = map[string]lua.LGFunction{
 		// Create watchers for each entry
 		watchers := make([]*watcher.Watcher, 0, len(entries))
 		for _, entry := range entries {
-			watcher, err := createWatcher(L, entry.Files, entry.Callback, entry.Opts)
+			fileWatcher, err := createWatcher(L, entry.Files, entry.Callback, entry.Opts)
 			if err != nil {
 				return luaerror.Push(L, 0, fmt.Errorf("error creating watcher: %w", err))
 			}
-			defer watcher.Close()
+			defer fileWatcher.Close()
 
-			watchers = append(watchers, watcher)
+			watchers = append(watchers, fileWatcher)
 		}
 
 		// Wait for all watchers to stop in parallel (using goroutines). Send their errors to a channel and waits for all of them to stop
 		errorChannel := make(chan error, len(watchers))
-		for _, watcher := range watchers {
+		for _, fileWatcher := range watchers {
 			go func() {
-				err := watcher.Wait()
+				err := fileWatcher.Wait()
 				if err != nil {
 					err = fmt.Errorf("error waiting for watcher: %w", err)
 				}
@@ -124,8 +124,8 @@ var functions = map[string]lua.LGFunction{
 		}
 
 		// Close watchers
-		for _, watcher := range watchers {
-			err := watcher.Close()
+		for _, fileWatcher := range watchers {
+			err := fileWatcher.Close()
 			if err != nil {
 				return luaerror.Push(L, 0, fmt.Errorf("error closing watcher: %w", err))
 			}
@@ -137,7 +137,7 @@ var functions = map[string]lua.LGFunction{
 
 // createWatcher creates a new file system Watcher with the given files, callback function and options.
 func createWatcher(L *lua.LState, files []string, callback *lua.LFunction, opts *watcher.WatcherOpts) (*watcher.Watcher, error) {
-	watcher, err := watcher.NewWatcher(func(file string, operation watcher.WatcherOperation) error {
+	fileWatcher, err := watcher.NewWatcher(func(file string, operation watcher.WatcherOperation) error {
 		L.Push(callback)
 		L.Push(lua.LString(file))
 		L.Push(lua.LNumber(operation))
@@ -147,10 +147,10 @@ func createWatcher(L *lua.LState, files []string, callback *lua.LFunction, opts 
 		return nil, fmt.Errorf("error creating new watcher: %w", err)
 	}
 
-	err = watcher.AddFiles(files)
+	err = fileWatcher.AddFiles(files)
 	if err != nil {
 		return nil, fmt.Errorf("error adding files to watcher: %w", err)
 	}
 
-	return watcher, nil
+	return fileWatcher, nil
 }

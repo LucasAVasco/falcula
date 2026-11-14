@@ -22,7 +22,8 @@ func (s Status) IsDoingNothing() bool {
 	return s == None || s == Ready || s == PrepareAborted || s == Ended || s == Stopped
 }
 
-func (s Status) ToString() string {
+// String returns the name of the status
+func (s Status) String() string {
 	switch s {
 	case None:
 		return "None"

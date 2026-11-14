@@ -18,7 +18,7 @@ func New() (*os.File, error) {
 	}
 
 	// Temporary directory
-	tmpDir := os.TempDir() + "/falcula-" + currentUser.Username
+	tmpDir := filepath.Join(os.TempDir(), "falcula-"+currentUser.Username)
 
 	err = os.MkdirAll(tmpDir, 0700)
 	if err != nil {

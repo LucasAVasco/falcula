@@ -14,7 +14,7 @@ import (
 
 type OnRunTask = func(task *project.Task, subTask string, args []string) error
 
-// Runtime represents the environment for running Lua scripts. It has a Lua state and data common to all modules, includeing, the created
+// Runtime represents the environment for running Lua scripts. It has a Lua state and data common to all modules, including the created
 // service managers the current state of the script (current arguments and available arguments)
 type Runtime struct {
 	project   *project.Project
@@ -75,7 +75,7 @@ func (r *Runtime) closeLuaStateWithoutLock() {
 	r.luaState = nil
 }
 
-func (r *Runtime) resetLusStateWithoutLock() {
+func (r *Runtime) resetLuaStateWithoutLock() {
 	r.closeLuaStateWithoutLock()
 
 	r.luaState = lua.NewState()
@@ -98,7 +98,7 @@ func (r *Runtime) GetLuaState() *lua.LState {
 	defer r.stateMutex.Unlock()
 
 	if r.luaState == nil {
-		r.resetLusStateWithoutLock()
+		r.resetLuaStateWithoutLock()
 	}
 	return r.luaState
 }
@@ -116,12 +116,12 @@ func (r *Runtime) ResetLuaState() *lua.LState {
 	r.stateMutex.Lock()
 	defer r.stateMutex.Unlock()
 
-	r.resetLusStateWithoutLock()
+	r.resetLuaStateWithoutLock()
 	return r.luaState
 }
 
-// GetLastExecutedFile returns the path of the last file executed with `RunScript()`. The `RunScript()` method updates the value returned by
-// this method. If a file was executed without calling `RunScript()`, it will not update this value
+// GetLastExecutedFile returns the path of the last file executed with `RunFile()`. The `RunFile()` method updates the value returned by
+// this method. If a file was executed without calling `RunFile()`, it will not update this value
 func (r *Runtime) GetLastExecutedFile() string {
 	return r.lastExecutedFile
 }

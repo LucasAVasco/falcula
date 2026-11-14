@@ -9,7 +9,7 @@ import (
 	"github.com/LucasAVasco/falcula/project"
 )
 
-// App is the main application. Its is a facade to all falcula features
+// App is the main application. It is a facade to all falcula features
 type App struct {
 	rawMode   bool
 	invokeDir string

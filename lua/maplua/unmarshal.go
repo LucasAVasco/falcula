@@ -161,7 +161,7 @@ func unmarshalSlice(luaValue *lua.LTable, destType reflect.Type, destValue refle
 	}
 	sliceValue := destValue
 	for i := range luaValue.Len() {
-		// Create a element. Its is a pointer to the literal, container or structure
+		// Create a element. It is a pointer to the literal, container or structure
 		var element reflect.Value
 		if isSliceOfPointers {
 			element = reflect.New(destType.Elem().Elem())
@@ -195,7 +195,7 @@ func unmarshalMap(luaValue *lua.LTable, destType reflect.Type, destValue reflect
 		destValue.Set(reflect.MakeMap(reflect.MapOf(keyType, destType.Elem())))
 	}
 	err := luatable.ForEach(luaValue, func(key, value lua.LValue) error {
-		// Create a element. Its is a pointer to the literal, container or structure
+		// Create a element. It is a pointer to the literal, container or structure
 		var element reflect.Value
 		if isMapOfPointers {
 			element = reflect.New(destType.Elem().Elem())
@@ -273,7 +273,7 @@ func unmarshalStruct(luaValue *lua.LTable, destType reflect.Type, destValue refl
 				field.Set(reflect.New(field.Type().Elem()))
 			}
 
-			// Filed must be the element instead of a pointer to it
+			// Field must be the element instead of a pointer to it
 			field = field.Elem()
 		}
 

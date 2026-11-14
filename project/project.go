@@ -25,7 +25,7 @@ type Project struct {
 	FallbackTask   string            `yaml:"fallback_task"`
 }
 
-// LoadProject reads the project configuration file and parses it
+// LoadProjectFile reads the project configuration file and parses it
 func LoadProjectFile(file string) (*Project, error) {
 	c := Project{
 		Extends:  make([]string, 0),

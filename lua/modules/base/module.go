@@ -6,7 +6,7 @@ type BaseModule struct {
 	Config *Config // It is set by the module loader
 }
 
-// SetConfig sets the configurations common for all modules. Is called by the module loader
+// SetBaseModuleConfig sets the configurations common for all modules. Is called by the module loader
 func (b *BaseModule) SetBaseModuleConfig(opts *Config) {
 	b.Config = opts
 }

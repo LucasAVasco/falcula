@@ -1,4 +1,4 @@
-// Package modtui is a modules to work with the text user interface
+// Package modtui is a module to work with the text user interface
 package modtui
 
 import (
@@ -21,12 +21,12 @@ type Config struct {
 type Module struct {
 	base.BaseModule
 
-	config *Config
+	tuiConfig *Config
 }
 
 func New(config *Config) *Module {
 	m := Module{
-		config: config,
+		tuiConfig: config,
 	}
 
 	if serviceTui != nil {
@@ -41,15 +41,15 @@ func New(config *Config) *Module {
 
 func (m *Module) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 	var functions = map[string]lua.LGFunction{
-		"show": func(l *lua.LState) int {
+		"show": func(L *lua.LState) int {
 			err := m.ShowTui()
 			if err != nil {
-				luaerror.Push(L, 0, fmt.Errorf("error showing text user interface: %w", err))
+				return luaerror.Push(L, 0, fmt.Errorf("error showing text user interface: %w", err))
 			}
 			return 0
 		},
 
-		"hide": func(l *lua.LState) int {
+		"hide": func(L *lua.LState) int {
 			HideTui()
 			return 0
 		},
@@ -67,7 +67,7 @@ func (m *Module) GetTui() *tui.Tui {
 // ShowTui shows the text user interface.
 func (m *Module) ShowTui() error {
 	// Don't show the text user interface in raw mode
-	if m.config.RawMode {
+	if m.tuiConfig.RawMode {
 		return nil
 	}
 
@@ -75,7 +75,7 @@ func (m *Module) ShowTui() error {
 	if serviceTui == nil {
 		serviceTui = tui.New(&tui.Config{
 			Runtime:      m.Config.Runtime,
-			OnSelectArgs: m.config.OnSelectArgs,
+			OnSelectArgs: m.tuiConfig.OnSelectArgs,
 		})
 	}
 

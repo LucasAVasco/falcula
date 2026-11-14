@@ -1,10 +1,10 @@
 package project
 
 import (
-	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
+
+	"github.com/LucasAVasco/falcula/filesystem"
 )
 
 // HasConfigFile returns true if a project configuration file exists at the given folder. Returns false otherwise
@@ -26,10 +26,10 @@ func GetConfigFile(folder string) (string, error) {
 
 	projectFile, err := getFirstExistingFile(
 		// NOTE(LucasAVasco): the order matters here. Loads the local file first
-		folder+"/falcula.local.yaml",
-		folder+"/falcula.local.yml",
-		folder+"/falcula.yaml",
-		folder+"/falcula.yml",
+		filepath.Join(folder, "falcula.local.yaml"),
+		filepath.Join(folder, "falcula.local.yml"),
+		filepath.Join(folder, "falcula.yaml"),
+		filepath.Join(folder, "falcula.yml"),
 	)
 	if err != nil {
 		return "", fmt.Errorf("error getting first project file: %w", err)
@@ -41,7 +41,7 @@ func GetConfigFile(folder string) (string, error) {
 // getFirstExistingFile returns the first file that exists in the given list. Follows the order in the list. Returns "" if not found
 func getFirstExistingFile(files ...string) (string, error) {
 	for _, file := range files {
-		exists, err := fileExists(file)
+		exists, err := filesystem.FileExists(file)
 		if err != nil {
 			return "", fmt.Errorf("error checking if file '%s' exists: %w", file, err)
 		}
@@ -52,19 +52,4 @@ func getFirstExistingFile(files ...string) (string, error) {
 	}
 
 	return "", nil
-}
-
-// fileExists checks if a file exists
-func fileExists(path string) (bool, error) {
-	_, err := os.Stat(path)
-
-	if err == nil {
-		return true, nil
-	}
-
-	if errors.Is(err, os.ErrNotExist) {
-		return false, nil
-	}
-
-	return false, fmt.Errorf("error getting file file status: %w", err)
 }

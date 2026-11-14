@@ -46,7 +46,7 @@ func (p *DockerComposeInfo) GetComposeFile() (*parser.File, error) {
 	return p.composeFile, nil
 }
 
-// getDefaultBuildServices returns the default build services (if the user does not provide any default build service, returns all buildable
+// GetDefaultBuildServices returns the default build services (if the user does not provide any default build service, returns all buildable
 // services)
 func (p *DockerComposeInfo) GetDefaultBuildServices() ([]string, error) {
 	if len(p.defaultBuildServices) == 0 {

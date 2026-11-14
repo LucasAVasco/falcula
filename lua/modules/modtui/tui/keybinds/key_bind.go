@@ -6,7 +6,7 @@ import (
 	"github.com/gdamore/tcell/v2"
 )
 
-// KeyBind represents a key bind manager by the handler
+// KeyBind represents a key bind managed by the handler
 type KeyBind struct {
 	Key   tcell.Key // Key that will trigger the key bind
 	Rune  rune      // Rune that will trigger the key bind

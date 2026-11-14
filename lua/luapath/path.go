@@ -28,22 +28,22 @@ func getStackSource(L *lua.LState, index int) (string, error) {
 // GetCurrentLuaFile returns the path of the current Lua file being executed
 func GetCurrentLuaFile(L *lua.LState) (string, error) {
 	// Find a stack source that matches a Lua file
-	var stack_source string
+	var stackSource string
 	for i := 0; i <= 100; i++ {
 		var err error
-		stack_source, err = getStackSource(L, i)
+		stackSource, err = getStackSource(L, i)
 		if err != nil {
 			return "", fmt.Errorf("Failed to get stack level %d: %w", i, err)
 		}
 
 		// Ends if file is a Lua file
-		if filepath.Ext(stack_source) == ".lua" {
+		if filepath.Ext(stackSource) == ".lua" {
 			break
 		}
 	}
 
 	// Source file
-	file := strings.TrimPrefix(stack_source, "@")
+	file := strings.TrimPrefix(stackSource, "@")
 	file, err := filepath.Abs(file)
 	if err != nil {
 		return "", fmt.Errorf("Failed to get absolute path of '%s': %w", file, err)
