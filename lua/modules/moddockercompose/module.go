@@ -43,7 +43,7 @@ func (l *Loader) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 			// Creates the provider for the compose file
 			composeFile, err = luapath.GetAbs(L, composeFile)
 			if err != nil {
-				return fmt.Errorf("error getting absolute path: %w\n", err)
+				return fmt.Errorf("error getting absolute path: %w", err)
 			}
 
 			provider := dockercompose.New(&config, composeFile)

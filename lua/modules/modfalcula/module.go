@@ -20,7 +20,7 @@ func New() *Module {
 func (m *Module) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 	L.SetFuncs(mod, map[string]lua.LGFunction{
 		"configure_abort_on_error": func(L *lua.LState) int {
-			abortOnError := bool(L.Get(1).(lua.LBool))
+			abortOnError := L.CheckBool(1)
 			luaerror.ConfigureAbortOnError(abortOnError)
 			return 0
 		},

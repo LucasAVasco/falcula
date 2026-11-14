@@ -96,7 +96,10 @@ func (w *Watcher) listenEvents(callback WatcherCallback) error {
 			file := filepath.Clean(event.Name)
 			var dir string
 			isDir, err := filesystem.FileIsDir(file)
-			if err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
+				// The file was removed or renamed, so it can not be checked anymore. Uses the tracked directories instead
+				isDir = w.dirsToWatch[file]
+			} else if err != nil {
 				return fmt.Errorf("error checking if '%s' is a directory: %w", file, err)
 			}
 			if isDir {
@@ -272,7 +275,10 @@ func (w *Watcher) addAbs(file string, isDir bool, filter *ignore.Filter, opts *W
 					return fmt.Errorf("error checking if file is ignored: %w", err)
 				}
 				if isIgnored {
-					return filepath.SkipDir
+					if d.IsDir() {
+						return filepath.SkipDir
+					}
+					return nil
 				}
 			}
 

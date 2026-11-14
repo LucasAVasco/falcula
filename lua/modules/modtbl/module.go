@@ -26,8 +26,7 @@ func (m *Module) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 			// Arguments
 			behavior := luatable.ExtendBehaviorFromString(L.CheckString(1))
 			if behavior == luatable.ExtendBehaviorInvalid {
-				luaerror.Push(L, 1, fmt.Errorf("invalid behavior: %s", L.CheckString(1)))
-				return 1
+				return luaerror.Push(L, 0, fmt.Errorf("invalid behavior: %s", L.CheckString(1)))
 			}
 
 			destTable := L.CheckTable(2)
@@ -40,7 +39,7 @@ func (m *Module) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 			// Execution
 			err := luatable.Extend(behavior, destTable, tables...)
 			if err != nil {
-				luaerror.Push(L, 1, fmt.Errorf("error extending table: %w", err))
+				return luaerror.Push(L, 0, fmt.Errorf("error extending table: %w", err))
 			}
 
 			return 0
@@ -50,8 +49,7 @@ func (m *Module) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 			// Arguments
 			behavior := luatable.ExtendBehaviorFromString(L.CheckString(1))
 			if behavior == luatable.ExtendBehaviorInvalid {
-				luaerror.Push(L, 1, fmt.Errorf("invalid behavior: %s", L.CheckString(1)))
-				return 1
+				return luaerror.Push(L, 0, fmt.Errorf("invalid behavior: %s", L.CheckString(1)))
 			}
 
 			destTable := L.CheckTable(2)
@@ -64,7 +62,7 @@ func (m *Module) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 			// Execution
 			err := luatable.DeepExtend(behavior, destTable, tables...)
 			if err != nil {
-				luaerror.Push(L, 1, fmt.Errorf("error deep extending table: %w", err))
+				return luaerror.Push(L, 0, fmt.Errorf("error deep extending table: %w", err))
 			}
 
 			return 0

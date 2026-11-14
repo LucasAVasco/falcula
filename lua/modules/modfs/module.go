@@ -107,12 +107,12 @@ var functions = map[string]lua.LGFunction{
 		// Wait for all watchers to stop in parallel (using goroutines). Send their errors to a channel and waits for all of them to stop
 		errorChannel := make(chan error, len(watchers))
 		for _, watcher := range watchers {
-			func() {
+			go func() {
 				err := watcher.Wait()
 				if err != nil {
-					errorChannel <- fmt.Errorf("error waiting for watcher: %w", err)
+					err = fmt.Errorf("error waiting for watcher: %w", err)
 				}
-				errorChannel <- nil
+				errorChannel <- err
 			}()
 		}
 

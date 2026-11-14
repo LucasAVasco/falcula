@@ -97,7 +97,7 @@ func LoadProjectFile(file string) (*Project, error) {
 		task.Project = &c
 		err := task.ConvertToAbsPath(c.Cwd)
 		if err != nil {
-			return nil, fmt.Errorf("error converting task '%s' to absolute path: %w", task.ShellFile, err)
+			return nil, fmt.Errorf("error converting task '%s' to absolute path: %w", name, err)
 		}
 	}
 
@@ -241,7 +241,7 @@ func (p *Project) GetChildProjectByName(name string) (*Project, error) {
 
 	project, err := LoadProject(projectPath)
 	if err != nil {
-		return nil, fmt.Errorf("error reading child project configuration file '%s': %w", innerName, err)
+		return nil, fmt.Errorf("error reading child project configuration file '%s': %w", subProjectName, err)
 	}
 	if !hasSubProjectName {
 		return project, nil
@@ -326,7 +326,7 @@ func (p *Project) GetAllTasks() (map[string]*Task, error) {
 	for projectName, projectPath := range p.Projects {
 		project, err := LoadProject(projectPath)
 		if err != nil {
-			return nil, fmt.Errorf("error reading configuration file of project '%s' at path '%s': %v", projectName, projectPath, err)
+			return nil, fmt.Errorf("error reading configuration file of project '%s' at path '%s': %w", projectName, projectPath, err)
 		}
 
 		subTasks, err := project.GetAllTasks()

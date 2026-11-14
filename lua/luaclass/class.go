@@ -145,12 +145,12 @@ func CallMethod(L *lua.LState, object *lua.LTable, method string, numReturn int,
 		return nil, fmt.Errorf("error calling method '%s': %w", method, err)
 	}
 
-	// List of return values
+	// List of return values (in the same order that the method returns them)
 	retList := make([]lua.LValue, numReturn)
 	for i := range numReturn {
-		retList[i] = L.Get(-1)
-		L.Pop(1)
+		retList[i] = L.Get(i - numReturn)
 	}
+	L.Pop(numReturn)
 
 	return retList, nil
 }

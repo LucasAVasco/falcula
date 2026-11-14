@@ -406,11 +406,11 @@ func (e *EnhancedService) Reset(force bool) (*iface.ExitInfo, error) {
 	// Aborts the service
 	exitInfo, err := e.AbortPrepareOrStop(force)
 	if err != nil {
-		return exitInfo, fmt.Errorf("error aborting 'preparing' step '%s': %w", e.GetName(), err)
+		return exitInfo, fmt.Errorf("error aborting or stopping service '%s': %w", e.GetName(), err)
 	}
 	if exitInfoHasError(exitInfo) {
 		return exitInfo, fmt.Errorf(
-			"aborting preparing service '%s' returned an error: %w",
+			"aborting or stopping service '%s' returned an error: %w",
 			e.GetName(),
 			exitInfo.WrapError(),
 		)

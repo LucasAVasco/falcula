@@ -19,13 +19,13 @@ func GetRepositoryRoot(path string) (string, error) {
 		return "", fmt.Errorf("error getting absolute path: %w", err)
 	}
 
-	// Ensure path is a directory
+	// Starts the search from the directory that contains the file
 	isDir, err := filesystem.FileIsDir(path)
 	if err != nil {
 		return "", fmt.Errorf("error checking if path is a directory: %w", err)
 	}
 	if !isDir {
-		return filepath.Dir(path), nil
+		path = filepath.Dir(path)
 	}
 
 	// Traverse up the directory tree until we find a '.git' file/directory
@@ -37,9 +37,12 @@ func GetRepositoryRoot(path string) (string, error) {
 		if exists {
 			return path, nil
 		}
-		path = filepath.Dir(path)
-		if path == "/" {
+
+		// At the file system root
+		parent := filepath.Dir(path)
+		if parent == path {
 			return "", ErrNoRepository
 		}
+		path = parent
 	}
 }

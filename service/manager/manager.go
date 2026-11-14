@@ -4,6 +4,7 @@ package manager
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 
 	"github.com/LucasAVasco/falcula/service/enhanced"
@@ -90,7 +91,8 @@ func (m *Manager) RemoveService(svc *enhanced.EnhancedService, force bool, onSer
 // RemoveServices removes multiple services from the manager. The onServiceStop callback is optional and will be called when the service is
 // stopped. The force parameter is used to force the stop (instead of execute a graceful shutdown)
 func (m *Manager) RemoveServices(services []*enhanced.EnhancedService, force bool, onServiceStop enhanced.ExitStepCallback) error {
-	for _, svc := range services {
+	// Iterates over a copy because `services` may be the same slice returned by `GetServices`, which is modified when removing a service
+	for _, svc := range slices.Clone(services) {
 		err := m.RemoveService(svc, force, onServiceStop)
 		if err != nil {
 			return fmt.Errorf("error removing enhanced service '%s': %w", svc.GetName(), err)

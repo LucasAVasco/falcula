@@ -76,7 +76,7 @@ func FromString(version string) (*Version, error) {
 
 // String returns the version string.
 func (v *Version) String() string {
-	return fmt.Sprintf("v%d.%d.%d-%s", v.Major, v.Minor, v.Patch, v.Suffix)
+	return fmt.Sprintf("v%d.%d.%d%s", v.Major, v.Minor, v.Patch, v.Suffix) // The suffix already includes its separator (e.g. "-rc1")
 }
 
 // Compare returns -1 if 'v' is less than 'other', 0 if 'v' is equal to 'other', and 1 if 'v' is greater than 'other'.

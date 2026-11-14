@@ -33,7 +33,7 @@ func getProcessCommandFromLuaValue(value lua.LValue) (*process.Command, error) {
 
 	case lua.LTString:
 		command.Shell = true
-		command.Command = []string{value.(*lua.LString).String()}
+		command.Command = []string{value.String()}
 
 	case lua.LTTable:
 		value := value.(*lua.LTable)

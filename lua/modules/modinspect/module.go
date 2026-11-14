@@ -9,7 +9,7 @@ import (
 
 // LoadFunction loads the inspect function
 func LoadFunction(name string, L *lua.LState) int {
-	function := L.NewFunction(func(l *lua.LState) int {
+	function := L.NewFunction(func(L *lua.LState) int {
 		value := L.Get(1)
 
 		result, err := luainspect.Inspect(value)

@@ -20,6 +20,9 @@ func (r *Runtime) GetManagers() []*manager.Manager {
 // RemoveManager removes a service manager from the runtime list
 func (r *Runtime) RemoveManager(man *manager.Manager) {
 	index := slices.Index(r.managers, man)
+	if index < 0 {
+		return
+	}
 	r.managers = slices.Delete(r.managers, index, index+1)
 }
 
@@ -30,7 +33,7 @@ func (r *Runtime) closeAllManagersWithoutLock() {
 	for _, man := range r.managers {
 		err := man.Close(true, nil)
 		if err != nil {
-			r.Logger.LogError(fmt.Errorf("error closing manager '%s': %v", man.GetName(), err.Error()))
+			r.Logger.LogError(fmt.Errorf("error closing manager '%s': %w", man.GetName(), err))
 		}
 	}
 

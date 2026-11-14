@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 
 	"github.com/LucasAVasco/falcula/lua/luaruntime"
@@ -53,8 +54,7 @@ func (a *App) RunTask(task *project.Task, subTask string, args ...string) error 
 
 	if task.Shell.IsNotEmpty() {
 		if task.Shell.List != nil {
-			cmdArgs := task.Shell.List[1:]
-			cmdArgs = append(cmdArgs, args...)
+			cmdArgs := slices.Concat(task.Shell.List[1:], args) // Copies the list, so the task is not modified
 			cmd := process.CreateCmd(false, task.Shell.List[0], cmdArgs...)
 			a.configureTaskCmd(cmd, task, subTask)
 

@@ -40,6 +40,7 @@ func (p *DockerComposeInfo) GetComposeFile() (*parser.File, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error parsing docker-compose file: %w", err)
 		}
+		p.composeFileReadTime = time.Now()
 	}
 
 	return p.composeFile, nil

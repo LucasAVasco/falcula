@@ -1,6 +1,8 @@
 package modtemplate
 
 import (
+	"reflect"
+
 	"github.com/LucasAVasco/falcula/lua/luaerror"
 
 	lua "github.com/yuin/gopher-lua"
@@ -32,9 +34,12 @@ func getDataFromLuaTable(L *lua.LState, value lua.LValue) any {
 
 		// Returns the map if there is at least one key, otherwise returns the slice
 		if len(mapData) > 0 {
-			if len(sliceData) > 0 {
-				for _, value := range sliceData {
+			for index, value := range sliceData {
+				// Maps and slices can not be used as map keys. Uses their position (1-based, like Lua) as key instead
+				if reflect.TypeOf(value).Comparable() {
 					mapData[value] = value
+				} else {
+					mapData[float64(index+1)] = value
 				}
 			}
 

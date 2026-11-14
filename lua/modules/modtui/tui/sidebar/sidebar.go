@@ -122,9 +122,7 @@ func (s *Sidebar) RemoveManager(man *manager.Manager) error {
 
 // RemoveAllManagers removes all managers from the side bar
 func (s *Sidebar) RemoveAllManagers() error {
-	for _, child := range s.root.GetChildren() {
-		s.root.RemoveChild(child)
-	}
+	s.root.ClearChildren()
 
 	// Updates the UI
 	s.app.Draw()
@@ -228,7 +226,7 @@ func (s *Sidebar) UpdateServiceStatus(man *manager.Manager, svc *enhanced.Enhanc
 		return fmt.Errorf("error getting node of service '%s' of manager '%s': %w", svc.GetName(), man.GetName(), err)
 	}
 	if node == nil {
-		return fmt.Errorf("service '%s' not found in manager '%s", svc.GetName(), man.GetName())
+		return fmt.Errorf("service '%s' not found in manager '%s'", svc.GetName(), man.GetName())
 	}
 
 	// Updates the service text

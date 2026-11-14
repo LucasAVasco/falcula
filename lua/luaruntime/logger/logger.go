@@ -48,9 +48,7 @@ func New() (*Logger, error) {
 		str := string(b)
 
 		// Removes the trailing newline
-		if str[len(str)-1] == '\n' {
-			str = str[:len(str)-1]
-		}
+		str = strings.TrimSuffix(str, "\n")
 		lines := strings.SplitSeq(str, "\n")
 
 		for line := range lines {
@@ -193,7 +191,7 @@ func (l *Logger) LogError(err error) (int, error) {
 // GetOnErrorWithoutReturn returns a function that logs an error and discards the return value
 func (l *Logger) GetOnErrorWithoutReturn() func(error) {
 	return func(err error) {
-		l.onErrorLog(err)
+		_, _ = l.LogError(err)
 	}
 }
 
