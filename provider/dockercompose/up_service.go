@@ -31,15 +31,10 @@ func (s *UpService) Prepare(callback iface.OnExitCallback) (iface.Step, error) {
 }
 
 func (s *UpService) Start(callback iface.OnExitCallback) (iface.Step, error) {
-	procOpts := s.NewProcessOptions()
-	procOpts.OnExit = func(info *process.ExitInfo) { callback(info, nil) }
-	setDockerPlatformEnv(procOpts, s.platform)
-
-	// Starts the process
-	proc, err := cmd.Up(procOpts, s.Info.GetComposeFilePath())
+	step, err := s.runComposeCommand(callback, s.platform, cmd.Up)
 	if err != nil {
 		return nil, fmt.Errorf("error starting 'Up' command: %w", err)
 	}
 
-	return AbortWithKillDecorator(adapter.ProcessToStep(proc), s.Service), nil
+	return step, nil
 }

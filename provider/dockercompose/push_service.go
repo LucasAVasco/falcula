@@ -32,11 +32,6 @@ type PushService struct {
 	opts *PushServiceOpts
 }
 
-// getPlatformSuffix gets the suffix to use in the tag of the image
-func getPlatformSuffix(platform string) string {
-	return strings.ReplaceAll(platform, "/", "-")
-}
-
 // generatePushImageProcesses generates the processes to push images to a registry. Supports single platform push and multiple platforms
 // images (manifest). The tag is the tag of the image in the registry
 func (s *PushService) generatePushImageProcesses(image, registry, tag string, platforms []string) ([]*process.Process, error) {
@@ -52,11 +47,6 @@ func (s *PushService) generatePushImageProcesses(image, registry, tag string, pl
 	// Process data
 	procOpts := s.NewProcessOptions()
 	procList := make([]*process.Process, 0, 1+len(platforms))
-
-	// Default platform
-	if platforms == nil {
-		platforms = []string{}
-	}
 
 	// Manifest in the registry with all images
 	registryManifest := registry + "/" + image
@@ -118,13 +108,6 @@ func (s *PushService) generatePushImageProcesses(image, registry, tag string, pl
 // generatePushProcesses generates the processes to push images to a registry
 func (s *PushService) generatePushProcesses(info *PushInfo) ([]*process.Process, error) {
 	// Default images to push
-	if info.Images == nil {
-		info.Images = []string{}
-	}
-	if info.Services == nil {
-		info.Services = []string{}
-	}
-
 	if len(info.Images) == 0 && len(info.Services) == 0 {
 		images, err := s.Info.GetDefaultPushImages()
 		if err != nil {
@@ -174,11 +157,6 @@ func (s *PushService) generatePushListProcesses(infoList []*PushInfo) ([]*proces
 		procList = append(procList, newProcList...)
 	}
 	return procList, nil
-}
-
-func (s *PushService) Prepare(callback iface.OnExitCallback) (iface.Step, error) {
-	callback(&iface.ExitInfo{}, nil)
-	return nil, nil
 }
 
 func (s *PushService) Start(callback iface.OnExitCallback) (iface.Step, error) {

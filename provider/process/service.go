@@ -20,40 +20,38 @@ type Service struct {
 }
 
 func (s *Service) Prepare(callback iface.OnExitCallback) (iface.Step, error) {
-	if s.prepareCmd == nil {
-		callback(&iface.ExitInfo{}, nil)
-		return nil, nil
-	}
-
-	procOpts := s.NewProcessOptions()
-	procOpts.Dir = s.prepareCmd.Dir
-	procOpts.Shell = s.prepareCmd.Shell
-	procOpts.OnExit = func(info *process.ExitInfo) { callback(info, nil) }
-
-	proc, err := process.New(procOpts, s.prepareCmd.Command[0], s.prepareCmd.Command[1:]...)
+	step, err := s.runCommand(s.prepareCmd, callback)
 	if err != nil {
 		return nil, fmt.Errorf("error running 'Prepare' command: %w", err)
 	}
-
-	return adapter.ProcessToStep(proc), nil
+	return step, nil
 }
 
 func (s *Service) Start(callback iface.OnExitCallback) (iface.Step, error) {
-	if s.mainCmd == nil {
+	step, err := s.runCommand(s.mainCmd, callback)
+	if err != nil {
+		return nil, fmt.Errorf("error starting main command: %w", err)
+	}
+	return step, nil
+}
+
+// runCommand starts the command and returns a step that waits for it. If the command is nil, calls the callback immediately and returns
+// no step
+func (s *Service) runCommand(command *Command, callback iface.OnExitCallback) (iface.Step, error) {
+	if command == nil {
 		callback(&iface.ExitInfo{}, nil)
 		return nil, nil
 	}
 
 	procOpts := s.NewProcessOptions()
-	procOpts.Dir = s.mainCmd.Dir
-	procOpts.Shell = s.mainCmd.Shell
+	procOpts.Dir = command.Dir
+	procOpts.Shell = command.Shell
 	procOpts.OnExit = func(info *process.ExitInfo) { callback(info, nil) }
 
-	// Starts the process
-	proc, err := process.New(procOpts, s.mainCmd.Command[0], s.mainCmd.Command[1:]...)
+	proc, err := process.New(procOpts, command.Command[0], command.Command[1:]...)
 	if err != nil {
-		return nil, fmt.Errorf("error starting 'Up' command: %w", err)
+		return nil, err
 	}
 
-	return adapter.ProcessToStep(proc), err
+	return adapter.ProcessToStep(proc), nil
 }

@@ -3,8 +3,6 @@ package dockercompose
 import (
 	"fmt"
 
-	"github.com/LucasAVasco/falcula/process"
-	"github.com/LucasAVasco/falcula/provider/adapter"
 	"github.com/LucasAVasco/falcula/provider/base"
 	"github.com/LucasAVasco/falcula/provider/dockercompose/cmd"
 	"github.com/LucasAVasco/falcula/service/iface"
@@ -22,26 +20,16 @@ type DownService struct {
 	opts *DownServiceOpts
 }
 
-func (s *DownService) Prepare(callback iface.OnExitCallback) (iface.Step, error) {
-	callback(&iface.ExitInfo{}, nil)
-	return nil, nil
-}
-
 func (s *DownService) Start(callback iface.OnExitCallback) (iface.Step, error) {
-	procOpts := s.NewProcessOptions()
-	procOpts.OnExit = func(info *process.ExitInfo) {
-		callback(info, nil)
-	}
-
-	// Starts the process
 	args := []string{}
 	if s.opts.RemoveAnonymousVolumes {
 		args = append(args, "--volumes")
 	}
-	proc, err := cmd.Down(procOpts, s.Info.GetComposeFilePath(), args...)
+
+	step, err := s.runComposeCommand(callback, "", cmd.Down, args...)
 	if err != nil {
 		return nil, fmt.Errorf("error starting 'Down' command: %w", err)
 	}
 
-	return AbortWithKillDecorator(adapter.ProcessToStep(proc), s.Service), nil
+	return step, nil
 }

@@ -2,7 +2,6 @@ package dockercompose
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/LucasAVasco/falcula/process"
 	"github.com/LucasAVasco/falcula/provider/adapter"
@@ -29,22 +28,12 @@ type BuildService struct {
 	opts *BuildServiceOpts
 }
 
-// setDockerPlatformEnv sets the DOCKER_DEFAULT_PLATFORM environment variable if the platform is not empty
-func setDockerPlatformEnv(opts *process.Options, platform string) {
-	if platform != "" {
-		opts.Env = append(opts.Env, fmt.Sprintf("DOCKER_DEFAULT_PLATFORM=%s", platform))
-	}
-}
-
 // generateBuildProcessesForPlatform generates build processes for a specific platform.
 //
 // If building to a different platform, the images will be tagged with the platform suffix. Example: a image will be tagged as
 // 'my-image-name:linux-amd64' if building to the 'linux/amd64' platform
 func (s *BuildService) generateBuildProcessesForPlatform(services []string, platform string) ([]*process.Process, error) {
 	// Default services
-	if services == nil {
-		services = []string{}
-	}
 	if len(services) == 0 {
 		var err error
 		services, err = s.Info.GetDefaultBuildServices()
@@ -68,7 +57,7 @@ func (s *BuildService) generateBuildProcessesForPlatform(services []string, plat
 	if platform != "" {
 		procOpts.Env = []string{} // No need to set the default platform
 
-		platform = strings.ReplaceAll(platform, "/", "-")
+		platformSuffix := getPlatformSuffix(platform)
 		for _, service := range services {
 			// Source and destination srcImage
 			srcImage, err := s.Info.GetServiceImage(service)
@@ -80,10 +69,7 @@ func (s *BuildService) generateBuildProcessesForPlatform(services []string, plat
 				continue
 			}
 
-			destImage := srcImage
-			if platform != "" {
-				destImage = srcImage + ":" + platform
-			}
+			destImage := srcImage + ":" + platformSuffix
 
 			// Process
 			proc, err = cmd.Tag(procOpts, srcImage, destImage)
@@ -102,11 +88,6 @@ func (s *BuildService) generateBuildProcessesForPlatform(services []string, plat
 // Tags the images with a platform suffix if the platform is provided in the build info
 func (s *BuildService) generateBuildProcesses(info *BuildInfo) ([]*process.Process, error) {
 	procList := make([]*process.Process, 0, 1+len(info.Platforms))
-
-	// Default platforms
-	if info.Platforms == nil {
-		info.Platforms = []string{}
-	}
 
 	// No platform provided (use default platform)
 	if len(info.Platforms) == 0 {
@@ -149,11 +130,6 @@ func (s *BuildService) generateBuildListProcesses(infoList []*BuildInfo) ([]*pro
 	}
 
 	return procList, nil
-}
-
-func (s *BuildService) Prepare(callback iface.OnExitCallback) (iface.Step, error) {
-	callback(&iface.ExitInfo{}, nil)
-	return nil, nil
 }
 
 func (s *BuildService) Start(callback iface.OnExitCallback) (iface.Step, error) {
