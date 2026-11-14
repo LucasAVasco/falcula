@@ -7,6 +7,7 @@ import (
 	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/app"
 	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/help"
 	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/keybinds"
+	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/theme"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -26,7 +27,7 @@ type ArgsView struct {
 	OnSelected func(args []string)
 }
 
-func New(app *app.App, help *help.HelpWidget) *ArgsView {
+func New(app *app.App, help *help.HelpWidget, th *theme.Theme) *ArgsView {
 	a := ArgsView{
 		app:  app,
 		help: help,
@@ -43,12 +44,15 @@ func New(app *app.App, help *help.HelpWidget) *ArgsView {
 	// Current arguments preview
 	currentArgsPreview := tview.NewTextView().SetText("Current arguments: ")
 	currentArgsPreview.SetBorder(true)
+	currentArgsPreview.SetTextColor(th.Muted)
 	mainFlex.AddItem(currentArgsPreview, 3, 0, false)
 	a.currentArgsPreview = currentArgsPreview
 
 	// Available arguments
 	availableArgsTable := tview.NewTable().SetSelectable(true, false)
 	availableArgsTable.SetBorder(true)
+	availableArgsTable.SetSelectedStyle(th.SelectionStyle())
+	th.FocusBorder(availableArgsTable.Box)
 	availableArgsTable.SetSelectedFunc(func(row, column int) {
 		cell := availableArgsTable.GetCell(row, column)
 

@@ -5,6 +5,7 @@ import (
 	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/argsview"
 	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/help"
 	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/mainpage"
+	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/theme"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -54,7 +55,10 @@ func (t *Tui) closeExitDialog() {
 
 // newExitDialog creates the dialog that asks how to leave the text user interface
 func (t *Tui) newExitDialog() *tview.Modal {
-	return tview.NewModal().
+	modal := tview.NewModal()
+	t.config.Theme.StyleModal(modal)
+
+	return modal.
 		SetText("Leave the text user interface?\n\n" +
 			"Raw output mode keeps the services running and prints their logs in the terminal (press Alt+T to come back).").
 		AddButtons([]string{exitButtonRawOutput, exitButtonQuit, exitButtonCancel}).
@@ -73,6 +77,9 @@ func (t *Tui) newExitDialog() *tview.Modal {
 
 // newApp creates a new application if not in raw stdout mode
 func (t *Tui) newApp() {
+	// NOTE(LucasAVasco): the widgets copy the global styles when created, so the theme must be applied first
+	theme.Apply(t.config.Theme)
+
 	// Main application
 	t.app = app.Extend(tview.NewApplication())
 	if t.config.Screen != nil {
@@ -94,7 +101,7 @@ func (t *Tui) newApp() {
 		EnableMouse(true)
 
 	// Help page
-	t.help = help.New(t.app)
+	t.help = help.New(t.app, t.config.Theme)
 	t.help.OnOpen = func() {
 		t.pages.ShowPage(helpPageName)
 	}
@@ -103,13 +110,13 @@ func (t *Tui) newApp() {
 	}
 
 	// Main page
-	t.mainPage = mainpage.New(t.app, t.config.Runtime.Logger.GetLogFilePath(), t.help)
+	t.mainPage = mainpage.New(t.app, t.config.Runtime.Logger.GetLogFilePath(), t.help, t.config.Theme)
 	t.mainPage.OnFocusArgs = t.focusArgumentsPage
 	t.mainPage.OnExit = t.openExitDialog
 	t.pages.AddPage(mainPageName, t.mainPage.GetPrimitive(), true, false)
 
 	// Arguments page
-	t.argsView = argsview.New(t.app, t.help)
+	t.argsView = argsview.New(t.app, t.help, t.config.Theme)
 	t.argsView.OnExit = t.focusMainPage
 	t.argsView.OnSelected = func(args []string) {
 		t.focusMainPage()

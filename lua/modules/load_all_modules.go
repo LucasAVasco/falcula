@@ -16,6 +16,7 @@ import (
 	"github.com/LucasAVasco/falcula/lua/modules/modtbl"
 	"github.com/LucasAVasco/falcula/lua/modules/modtemplate"
 	"github.com/LucasAVasco/falcula/lua/modules/modtui"
+	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/theme"
 	"github.com/LucasAVasco/falcula/lua/modules/modyaml"
 	"github.com/LucasAVasco/falcula/service/enhanced"
 	"github.com/LucasAVasco/falcula/service/manager"
@@ -24,6 +25,8 @@ import (
 // AllModulesLoaderOptions is the configuration required by the module loader in order to load all modules
 type AllModulesLoaderOptions struct {
 	RawMode      bool                // Disables the TUI. Runs non-interactive
+	Theme        *theme.Theme        // Theme of the TUI. Optional: the default theme if nil
+	ThemeError   error               // Error loading the configured theme. Optional
 	OnSelectArgs func(args []string) // Called when the user selects the arguments to re-run the script
 }
 
@@ -32,6 +35,8 @@ func (l *Loader) LoadAllModules(config *AllModulesLoaderOptions) {
 	// Tui module
 	tuiModuleConfig := modtui.Config{
 		RawMode:      config.RawMode,
+		Theme:        config.Theme,
+		ThemeError:   config.ThemeError,
 		OnSelectArgs: config.OnSelectArgs,
 	}
 	tuiModule := modtui.New(&tuiModuleConfig)

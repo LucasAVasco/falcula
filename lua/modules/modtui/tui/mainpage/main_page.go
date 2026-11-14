@@ -7,6 +7,7 @@ import (
 	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/keybinds"
 	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/logpreview"
 	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/sidebar"
+	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/theme"
 
 	"github.com/rivo/tview"
 )
@@ -29,7 +30,7 @@ type MainPage struct {
 	OnExit      func()
 }
 
-func New(app *app.App, logFilePath string, help *help.HelpWidget) *MainPage {
+func New(app *app.App, logFilePath string, help *help.HelpWidget, th *theme.Theme) *MainPage {
 	m := MainPage{
 		help: help,
 
@@ -44,7 +45,7 @@ func New(app *app.App, logFilePath string, help *help.HelpWidget) *MainPage {
 	m.mainFlex = mainFlex
 
 	// Side bar
-	m.SideBar = sidebar.New(app, logFilePath)
+	m.SideBar = sidebar.New(app, logFilePath, th)
 	m.SideBar.OnError = func(err error) {
 		m.DebugLogs.Append(err, "\n")
 	}
@@ -56,11 +57,11 @@ func New(app *app.App, logFilePath string, help *help.HelpWidget) *MainPage {
 	mainFlex.AddItem(logsFlex, 0, 3, false)
 
 	// Service logs
-	m.ServiceLogs = logpreview.New(app, "Services logs", 100)
+	m.ServiceLogs = logpreview.New(app, "Services logs", 100, th)
 	logsFlex.AddItem(m.ServiceLogs.GetPrimitive(), 0, 2, false)
 
 	// Debug logs
-	m.DebugLogs = logpreview.New(app, "Debug logs", 100)
+	m.DebugLogs = logpreview.New(app, "Debug logs", 100, th)
 	logsFlex.AddItem(m.DebugLogs.GetPrimitive(), 0, 1, false)
 
 	// Key binds

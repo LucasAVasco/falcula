@@ -7,6 +7,7 @@ import (
 
 	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/app"
 	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/keybinds"
+	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/theme"
 	"github.com/LucasAVasco/falcula/service/enhanced"
 	"github.com/LucasAVasco/falcula/service/manager"
 
@@ -16,6 +17,7 @@ import (
 // Sidebar is the side bar widget of the application.
 type Sidebar struct {
 	app             *app.App
+	theme           *theme.Theme
 	keyBindsHandler *keybinds.Handler
 	logFilePath     string
 
@@ -29,9 +31,10 @@ type Sidebar struct {
 }
 
 // Create a new side bar widget.
-func New(app *app.App, logFilePath string) *Sidebar {
+func New(app *app.App, logFilePath string, th *theme.Theme) *Sidebar {
 	s := Sidebar{
 		app:         app,
+		theme:       th,
 		logFilePath: logFilePath,
 
 		// Callbacks
@@ -39,14 +42,21 @@ func New(app *app.App, logFilePath string) *Sidebar {
 	}
 
 	s.tree = tview.NewTreeView()
-	s.root = tview.NewTreeNode("Service managers")
+	s.tree.SetGraphicsColor(th.Border)
+	s.root = s.newNode("Service managers")
 	s.tree.SetRoot(s.root)
 	s.tree.SetCurrentNode(s.root)
 	s.tree.SetBorder(true).SetTitle("Service managers")
+	th.FocusBorder(s.tree.Box)
 
 	s.setKeyBinds()
 
 	return &s
+}
+
+// newNode creates a tree node with the theme styles. The text may have color tags
+func (s *Sidebar) newNode(text string) *tview.TreeNode {
+	return tview.NewTreeNode(text).SetTextStyle(s.theme.TextStyle()).SetSelectedTextStyle(s.theme.SelectionStyle())
 }
 
 // GetPrimitive returns the primitive of the widget (used to include it in another widget). This function must not be called if outputting
@@ -94,7 +104,7 @@ func (s *Sidebar) AddManager(man *manager.Manager) error {
 	}
 
 	// Creates a new manager node and adds it to the root
-	newNode := tview.NewTreeNode(man.GetName()).SetReference(man).SetSelectable(true)
+	newNode := s.newNode(tview.Escape(man.GetName())).SetReference(man).SetSelectable(true)
 	s.root.AddChild(newNode)
 
 	// Updates the UI
@@ -174,7 +184,8 @@ func (s *Sidebar) getExistingServiceNode(
 
 // generateServiceText gets the text to show in the service node
 func (s *Sidebar) generateServiceText(svc *enhanced.EnhancedService) string {
-	return svc.GetName() + " (" + svc.GetStatus().String() + ")"
+	svcStatus := svc.GetStatus()
+	return tview.Escape(svc.GetName()) + " (" + theme.Colorize(svcStatus.String(), s.theme.StatusColor(svcStatus)) + ")"
 }
 
 // AddService adds a service to the side bar
@@ -191,7 +202,7 @@ func (s *Sidebar) AddService(man *manager.Manager, svc *enhanced.EnhancedService
 
 	// Creates the new service node and adds it to the manager node as a child
 	text := s.generateServiceText(svc)
-	newNode := tview.NewTreeNode(text).SetReference(svc).SetSelectable(true)
+	newNode := s.newNode(text).SetReference(svc).SetSelectable(true)
 	managerNode.AddChild(newNode)
 
 	// Updates the UI

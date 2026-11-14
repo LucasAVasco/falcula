@@ -45,7 +45,9 @@ func (a *App) runLuaOnce(config *runLuaConfig) (bool, error) {
 	canReRun := config.File != ""             // Only Lua files can be re-run with new arguments
 
 	loader := modules.LoadAllModules(config.Runtime, &modules.AllModulesLoaderOptions{
-		RawMode: a.rawMode,
+		RawMode:    a.rawMode,
+		Theme:      a.theme,
+		ThemeError: a.themeError,
 		OnSelectArgs: func(newArgs []string) {
 			if !canReRun {
 				return

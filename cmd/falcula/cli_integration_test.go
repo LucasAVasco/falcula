@@ -137,3 +137,41 @@ print('after show')
 		t.Errorf("TUI task without a terminal = %q (exit %d)", out, code)
 	}
 }
+
+func TestIntegrationCLI_ConfigInit_WritesFilesOnce(t *testing.T) {
+	configDir := t.TempDir()
+	t.Setenv("FALCULA_CONFIG_DIR", configDir) // Inherited by the CLI process
+	outside := t.TempDir()                    // Does not need a project
+
+	out, code := runCLI(t, outside, "config", "init")
+	if code != 0 || strings.Count(out, "written:") != 2 {
+		t.Fatalf("config init = %q (exit %d)", out, code)
+	}
+	for _, file := range []string{"config.yaml", filepath.Join("themes", "soft.yaml")} {
+		if _, err := os.Stat(filepath.Join(configDir, file)); err != nil {
+			t.Errorf("config init did not write %s: %v", file, err)
+		}
+	}
+
+	out, code = runCLI(t, outside, "config", "init")
+	if code != 0 || strings.Count(out, "kept") != 2 {
+		t.Errorf("second config init = %q (exit %d), want the files kept", out, code)
+	}
+
+	out, code = runCLI(t, outside, "config", "init", "--force")
+	if code != 0 || strings.Count(out, "written:") != 2 {
+		t.Errorf("config init --force = %q (exit %d)", out, code)
+	}
+}
+
+func TestIntegrationCLI_BrokenConfig_StillRuns(t *testing.T) {
+	dir := newProject(t)
+	configDir := t.TempDir()
+	t.Setenv("FALCULA_CONFIG_DIR", configDir)
+	testutil.WriteFile(t, filepath.Join(configDir, "config.yaml"), "theme: [not, a, name]\n")
+
+	out, code := runCLI(t, dir, "run", "lua", "x")
+	if code != 0 || !strings.Contains(out, "lua args: x") {
+		t.Errorf("task with a broken configuration = %q (exit %d)", out, code)
+	}
+}

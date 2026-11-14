@@ -1,0 +1,34 @@
+# Soft: the default falcula theme. Desaturated colors on the terminal's own background.
+#
+# Colors: "#rrggbb", a color name (e.g. "slategray") or "default" (the terminal's own color).
+# User themes inherit the missing keys from the theme in `extends` (default: soft).
+
+colors:
+  background: default        # Main background
+  foreground: "#c5c8c6"      # Primary text
+  muted: "#8b919a"           # Secondary text (help descriptions, labels)
+  border: "#4e5561"          # Panel borders
+  border_focused: "#8fa6bf"  # Border and title of the focused panel
+  title: "#9ca3ad"           # Panel titles
+  selection_foreground: "#1d2026"
+  selection_background: "#8fa6bf"
+  dialog_background: "#2e333b"
+  dialog_foreground: "#c5c8c6"
+  button_foreground: "#c5c8c6"
+  button_background: "#424852"
+  button_active_foreground: "#1d2026"
+  button_active_background: "#9fb58f"
+  error: "#cf8e78"           # Error messages in the debug logs
+
+status:                      # Service status in the sidebar
+  none: "#8b919a"
+  preparing: "#d4c08e"
+  ready: "#8fa6bf"
+  aborting_prepare: "#d4c08e"
+  prepare_aborted: "#8b919a"
+  running: "#9fb58f"
+  ended: "#8b919a"
+  stopping: "#d4c08e"
+  stopped: "#8b919a"
+  disabled: "#5f6670"
+  error: "#c88585"

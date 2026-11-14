@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/LucasAVasco/falcula/internal/testutil/testruntime"
+	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/theme"
 
 	"github.com/gdamore/tcell/v2"
 )
@@ -18,10 +19,17 @@ type testTui struct {
 
 func newTestTui(t *testing.T) *testTui {
 	t.Helper()
+	return newTestTuiWithTheme(t, nil)
+}
+
+// newTestTuiWithTheme creates a test text user interface with the theme (the default one if nil)
+func newTestTuiWithTheme(t *testing.T, th *theme.Theme) *testTui {
+	t.Helper()
 
 	tt := &testTui{screen: tcell.NewSimulationScreen("UTF-8"), calls: make(chan string, 10)}
 	tt.Tui = New(&Config{
 		Runtime:     testruntime.New(t, nil, nil),
+		Theme:       th,
 		Screen:      tt.screen,
 		OnRawOutput: func() { tt.calls <- "raw output" },
 		OnQuit:      func() { tt.calls <- "quit" },

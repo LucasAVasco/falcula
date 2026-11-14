@@ -7,12 +7,15 @@ import (
 	"sync"
 
 	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/app"
+	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/theme"
+
 	"github.com/rivo/tview"
 )
 
 // Preview is a widget that shows the logs. Supports both TUI and raw stdout mode
 type Preview struct {
 	mutex         sync.Mutex
+	theme         *theme.Theme
 	textView      *tview.TextView
 	ansiConverter io.Writer // Convert ANSI escape sequences to the color tags supported by `tview` and write to the text view
 }
@@ -22,8 +25,8 @@ type Preview struct {
 // The widget is a text view with the provided title.
 //
 // You can set the maximum number of lines of the text view with `maxLines`.
-func New(app *app.App, title string, maxLines int) *Preview {
-	p := Preview{}
+func New(app *app.App, title string, maxLines int, th *theme.Theme) *Preview {
+	p := Preview{theme: th}
 
 	// Text view creation and configuration
 	p.textView = tview.NewTextView().SetDynamicColors(true).SetWrap(true).SetScrollable(true).SetMaxLines(maxLines).
@@ -31,6 +34,7 @@ func New(app *app.App, title string, maxLines int) *Preview {
 			app.Draw()
 		})
 	p.textView.SetBorder(true).SetTitle(title)
+	th.FocusBorder(p.textView.Box)
 
 	// Starts with the cursor at the end
 	p.textView.ScrollToEnd()
@@ -66,7 +70,7 @@ func (p *Preview) Write(b []byte) (n int, err error) {
 
 func (p *Preview) WriteError(errToWrite error) (n int, err error) {
 	message := errToWrite.Error()
-	p.Append(message, "\n")
+	p.Append(theme.ColorizeANSI(message, p.theme.Error), "\n")
 	return len(message), nil
 }
 

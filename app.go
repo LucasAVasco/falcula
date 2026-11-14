@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/LucasAVasco/falcula/config"
+	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/theme"
 	"github.com/LucasAVasco/falcula/project"
 )
 
@@ -14,6 +16,9 @@ type App struct {
 	rawMode   bool
 	invokeDir string
 	project   *project.Project
+
+	theme      *theme.Theme // Theme of the TUI (from the user configuration)
+	themeError error        // Error loading the theme. Falcula uses the default theme and reports it in the TUI
 }
 
 // NewApp creates a new app instance. The `rawMode` parameter is used to determine if the falcula should run in raw mode (disables the TUI)
@@ -38,6 +43,11 @@ func NewApp(rawMode bool) (*App, error) {
 	a.project, err = project.LoadProject(projectDir)
 	if err != nil {
 		return nil, fmt.Errorf("error reading project file (falcula.yaml): %w", err)
+	}
+
+	// User configuration. Errors do not prevent falcula from running
+	if !rawMode {
+		a.theme, a.themeError = loadTheme()
 	}
 
 	return a, nil
@@ -81,4 +91,19 @@ func getProjectDir(currentDir string) (string, error) {
 
 		currentDir = parentDir
 	}
+}
+
+// loadTheme loads the theme of the user configuration. Returns the default theme and the error if it can not be loaded
+func loadTheme() (*theme.Theme, error) {
+	userConfig, err := config.Load()
+	if err != nil {
+		return theme.Default(), err
+	}
+
+	t, err := userConfig.LoadTheme()
+	if err != nil {
+		return theme.Default(), err
+	}
+
+	return t, nil
 }

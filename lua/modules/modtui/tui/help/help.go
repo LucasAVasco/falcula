@@ -4,6 +4,7 @@ package help
 import (
 	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/app"
 	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/keybinds"
+	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/theme"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -12,6 +13,7 @@ import (
 // HelpWidget is a widget that shows the available key binds
 type HelpWidget struct {
 	app   *app.App
+	theme *theme.Theme
 	index int
 
 	// Widgets
@@ -27,9 +29,10 @@ type HelpWidget struct {
 	onExit func() // Added by the `Open` method
 }
 
-func New(app *app.App) *HelpWidget {
+func New(app *app.App, th *theme.Theme) *HelpWidget {
 	h := HelpWidget{
 		app:    app,
+		theme:  th,
 		OnOpen: func() {},
 		OnExit: func() {},
 	}
@@ -38,6 +41,7 @@ func New(app *app.App) *HelpWidget {
 	h.flex = tview.NewFlex()
 	h.flex.SetBorder(true)
 	h.flex.SetTitle("Help")
+	h.flex.SetBorderColor(th.BorderFocused).SetTitleColor(th.BorderFocused) // Always focused while open
 
 	// Frame
 	h.frame = tview.NewFrame(h.flex)
@@ -72,12 +76,12 @@ func (h *HelpWidget) GetPrimitive() tview.Primitive {
 // addHandlerKeyBinds adds the key binds description of the handler to the list of key binds (table)
 func (h *HelpWidget) addHandlerKeyBinds(handler *keybinds.Handler) {
 	// Key binds
-	h.table.SetCellSimple(h.index, 0, handler.GetName())
+	h.table.SetCell(h.index, 0, tview.NewTableCell(handler.GetName()).SetTextColor(h.theme.Title).SetAttributes(tcell.AttrBold))
 	h.index++
 
 	for _, keyBind := range handler.GetKeyBinds() {
 		h.table.SetCell(h.index, 0, tview.NewTableCell(keyBind.GetName()))
-		h.table.SetCell(h.index, 1, tview.NewTableCell(keyBind.Desc))
+		h.table.SetCell(h.index, 1, tview.NewTableCell(keyBind.Desc).SetTextColor(h.theme.Muted))
 		h.index++
 	}
 

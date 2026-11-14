@@ -10,6 +10,7 @@ import (
 	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/argsview"
 	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/help"
 	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/mainpage"
+	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/theme"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -23,6 +24,9 @@ type Config struct {
 	// Called when the user chooses to leave the text user interface. Run in their own goroutine. If not provided, they only hide it
 	OnRawOutput func() // Switch to raw output mode (the services keep running)
 	OnQuit      func() // Quit falcula
+
+	// Colors of the text user interface. Optional: uses the default theme if nil
+	Theme *theme.Theme
 
 	// Screen used by the text user interface. Optional: uses the terminal if nil (tests use a simulation screen)
 	Screen tcell.Screen
@@ -51,6 +55,9 @@ type Tui struct {
 func New(config *Config) *Tui {
 	t := &Tui{config: config}
 
+	if config.Theme == nil {
+		config.Theme = theme.Default()
+	}
 	if config.OnSelectArgs == nil {
 		config.OnSelectArgs = func(args []string) {}
 	}
@@ -151,5 +158,9 @@ func (t *Tui) UpdateConfig(config *Config) {
 
 	if config.OnQuit != nil {
 		t.config.OnQuit = config.OnQuit
+	}
+
+	if config.Theme != nil {
+		t.config.Theme = config.Theme // Only affects the widgets created after this call
 	}
 }

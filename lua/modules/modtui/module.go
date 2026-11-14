@@ -3,19 +3,26 @@ package modtui
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/LucasAVasco/falcula/lua/luaerror"
 	"github.com/LucasAVasco/falcula/lua/modules/base"
 	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui"
+	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/theme"
 	lua "github.com/yuin/gopher-lua"
 )
 
 // Config is the configuration that the text user interface module needs
 type Config struct {
 	RawMode      bool
+	Theme        *theme.Theme // Optional: the default theme if nil
+	ThemeError   error        // Error loading the configured theme (reported in the debug logs when the TUI is shown). Optional
 	CurrentArgs  []string
 	OnSelectArgs func(args []string)
 }
+
+// reportThemeError reports the theme error only once (the text user interface is shown again after each script re-run)
+var reportThemeError sync.Once
 
 // Module is a module that provides functions and classes for working with the text user interface
 type Module struct {
@@ -76,12 +83,20 @@ func (m *Module) ShowTui() error {
 		return tui.New(&tui.Config{
 			Runtime:      m.Config.Runtime,
 			OnSelectArgs: m.tuiConfig.OnSelectArgs,
+			Theme:        m.tuiConfig.Theme,
 			OnRawOutput:  enterRawOutput,
 			OnQuit:       quit,
 		})
 	})
 	if err != nil {
 		return fmt.Errorf("error showing text user interface: %w", err)
+	}
+
+	// Shown in the debug logs of the text user interface (it uses the default theme)
+	if m.tuiConfig.ThemeError != nil {
+		reportThemeError.Do(func() {
+			m.Config.Runtime.Logger.LogError(fmt.Errorf("using the default theme: %w", m.tuiConfig.ThemeError))
+		})
 	}
 
 	return nil
