@@ -54,6 +54,11 @@ func getTagInfo(t reflect.StructField) (*tagInfo, error) {
 
 // Marshal encodes a Golang object to a Lua object
 func Marshal(value any) (lua.LValue, error) {
+	// Untyped nil (e.g. a JSON `null` decoded into `any`) has no type to inspect
+	if value == nil {
+		return lua.LNil, nil
+	}
+
 	t := reflect.TypeOf(value)
 	v := reflect.ValueOf(value)
 

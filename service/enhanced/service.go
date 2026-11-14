@@ -33,10 +33,19 @@ type EnhancedService struct {
 	svc       iface.Service
 	callbacks *Callbacks
 
-	mutex  sync.Mutex // Protects the fields below
-	status status.Status
-	step   iface.Step
+	mutex     sync.Mutex // Protects the fields below
+	status    status.Status
+	step      iface.Step
+	stepPhase stepPhase // Phase of the current step
 }
+
+// stepPhase is the phase of the service that a step belongs to
+type stepPhase int
+
+const (
+	prepareStep stepPhase = iota + 1 // Created by `Prepare` of the service
+	mainStep                         // Created by `Start` of the service
+)
 
 // NewEnhancedService returns a new EnhancedService. The callbacks parameter is optional
 func NewEnhancedService(svc iface.Service, callbacks *Callbacks) *EnhancedService {
@@ -101,14 +110,14 @@ func (e *EnhancedService) setStatus(status status.Status) {
 	e.callbacks.OnServiceStatusChanged(e)
 }
 
-// getStep returns the current step (preparing or running). Returns an error if the step is not available yet (the service is starting it
-// in another goroutine)
-func (e *EnhancedService) getStep() (iface.Step, error) {
+// getStep returns the current step if it belongs to the phase. Returns an error if the step is not available (the service is creating it
+// in another goroutine, or the current step belongs to another phase)
+func (e *EnhancedService) getStep(phase stepPhase) (iface.Step, error) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 
-	if e.step == nil {
-		return nil, fmt.Errorf("the step of service '%s' is not available yet: %w", e.svc.GetName(), ErrStepNotAvailable)
+	if e.step == nil || e.stepPhase != phase {
+		return nil, fmt.Errorf("the step of service '%s' is not available: %w", e.svc.GetName(), ErrStepNotAvailable)
 	}
 	return e.step, nil
 }
@@ -121,8 +130,8 @@ func (e *EnhancedService) clearStep() {
 	e.step = nil
 }
 
-// setStep sets the current step. Uses an empty step if it is nil
-func (e *EnhancedService) setStep(step iface.Step) {
+// setStep sets the current step and its phase. Uses an empty step if it is nil
+func (e *EnhancedService) setStep(step iface.Step, phase stepPhase) {
 	if step == nil {
 		step = empty.New()
 	}
@@ -131,6 +140,7 @@ func (e *EnhancedService) setStep(step iface.Step) {
 	defer e.mutex.Unlock()
 
 	e.step = step
+	e.stepPhase = phase
 }
 
 // onStepExit returns the callback called when a step ends. It updates the status of the service according to the exit information: Error
@@ -180,7 +190,7 @@ func (e *EnhancedService) StartPrepare() error {
 		e.setStatus(status.Error)
 		return fmt.Errorf("error preparing service '%s': %w", e.GetName(), err)
 	}
-	e.setStep(step)
+	e.setStep(step, prepareStep)
 
 	return nil
 }
@@ -191,16 +201,19 @@ func (e *EnhancedService) WaitPrepare() (*iface.ExitInfo, error) {
 		return &iface.ExitInfo{}, nil
 	}
 
-	if e.GetStatus() != status.Preparing && e.GetStatus() != status.Ready {
+	// NOTE(LucasAVasco): the step may have already ended (and changed the status) before this method is called
+	switch e.GetStatus() {
+	case status.Preparing, status.Ready, status.AbortingPrepare, status.PrepareAborted, status.Error:
+	default:
 		return nil, fmt.Errorf(
-			"service '%s' is not preparing or ready (current status: %s): %w",
+			"service '%s' is not preparing or prepared (current status: %s): %w",
 			e.GetName(),
 			e.GetStatus(),
 			ErrInvalidStatus,
 		)
 	}
 
-	step, err := e.getStep()
+	step, err := e.getStep(prepareStep)
 	if err != nil {
 		return nil, err
 	}
@@ -246,7 +259,7 @@ func (e *EnhancedService) AbortPrepare(force bool) (*iface.ExitInfo, error) {
 	}
 
 	e.setStatus(status.AbortingPrepare)
-	step, err := e.getStep()
+	step, err := e.getStep(prepareStep)
 	if err != nil {
 		return nil, err
 	}
@@ -273,7 +286,7 @@ func (e *EnhancedService) Start() error {
 		e.setStatus(status.Error)
 		return fmt.Errorf("error starting service '%s': %w", e.GetName(), err)
 	}
-	e.setStep(step)
+	e.setStep(step, mainStep)
 
 	return nil
 }
@@ -284,7 +297,10 @@ func (e *EnhancedService) Wait() (*iface.ExitInfo, error) {
 		return &iface.ExitInfo{}, nil
 	}
 
-	if e.GetStatus() != status.Running && e.GetStatus() != status.Ended {
+	// NOTE(LucasAVasco): the step may have already ended (and changed the status) before this method is called
+	switch e.GetStatus() {
+	case status.Running, status.Stopping, status.Ended, status.Stopped, status.Error:
+	default:
 		return nil, fmt.Errorf(
 			"service '%s' is not running or ended (current status: %s): %w",
 			e.GetName(),
@@ -293,7 +309,7 @@ func (e *EnhancedService) Wait() (*iface.ExitInfo, error) {
 		)
 	}
 
-	step, err := e.getStep()
+	step, err := e.getStep(mainStep)
 	if err != nil {
 		return nil, err
 	}
@@ -335,7 +351,7 @@ func (e *EnhancedService) Stop(force bool) (*iface.ExitInfo, error) {
 
 	// Stops the waiter
 	e.setStatus(status.Stopping)
-	step, err := e.getStep()
+	step, err := e.getStep(mainStep)
 	if err != nil {
 		return nil, err
 	}
