@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/LucasAVasco/falcula/internal/testutil"
+
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -19,16 +21,7 @@ func TestWatchParallelRunsCallbacksAndReturnsTheirErrors(t *testing.T) {
 		}
 	}
 
-	L := lua.NewState()
-	defer L.Close()
-	L.PreloadModule("fs", func(L *lua.LState) int {
-		mod := L.NewTable()
-		if err := New().Loader(L, "fs", mod); err != nil {
-			t.Fatal(err)
-		}
-		L.Push(mod)
-		return 1
-	})
+	L := testutil.NewLuaState(t, map[string]testutil.ModuleLoader{"fs": New()})
 	L.SetGlobal("file_a", lua.LString(files[0]))
 	L.SetGlobal("file_b", lua.LString(files[1]))
 
@@ -63,16 +56,7 @@ func TestWatchParallelRunsCallbacksAndReturnsTheirErrors(t *testing.T) {
 func TestWatchReturnsWhenTheScriptIsInterrupted(t *testing.T) {
 	dir := t.TempDir()
 
-	L := lua.NewState()
-	defer L.Close()
-	L.PreloadModule("fs", func(L *lua.LState) int {
-		mod := L.NewTable()
-		if err := New().Loader(L, "fs", mod); err != nil {
-			t.Fatal(err)
-		}
-		L.Push(mod)
-		return 1
-	})
+	L := testutil.NewLuaState(t, map[string]testutil.ModuleLoader{"fs": New()})
 	L.SetGlobal("dir", lua.LString(dir))
 
 	ctx, cancel := context.WithCancel(context.Background())

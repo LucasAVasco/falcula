@@ -3,31 +3,15 @@ package modtbl
 import (
 	"testing"
 
+	"github.com/LucasAVasco/falcula/internal/testutil"
 	"github.com/LucasAVasco/falcula/lua/luaerror"
-
-	lua "github.com/yuin/gopher-lua"
 )
-
-func newState(t *testing.T) *lua.LState {
-	t.Helper()
-	L := lua.NewState()
-	t.Cleanup(L.Close)
-	L.PreloadModule("tbl", func(L *lua.LState) int {
-		mod := L.NewTable()
-		if err := New().Loader(L, "tbl", mod); err != nil {
-			t.Fatal(err)
-		}
-		L.Push(mod)
-		return 1
-	})
-	return L
-}
 
 func TestExtendReturnsOnlyTheErrorOnFailure(t *testing.T) {
 	luaerror.ConfigureAbortOnError(false)
 	t.Cleanup(func() { luaerror.ConfigureAbortOnError(true) })
 
-	L := newState(t)
+	L := testutil.NewLuaState(t, map[string]testutil.ModuleLoader{"tbl": New()})
 	err := L.DoString(`
 		local tbl = require("tbl")
 		local n1, e1 = select("#", tbl.extend("invalid", {})), tbl.extend("invalid", {})

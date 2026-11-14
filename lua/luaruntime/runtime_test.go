@@ -122,9 +122,14 @@ func TestInterruptWhileWaitingForServices(t *testing.T) {
 func TestInterruptBusyScript(t *testing.T) {
 	r := newTestRuntime(t)
 
-	result := runInBackground(r, `while true do end`)
+	started := make(chan struct{})
+	r.GetLuaState().SetGlobal("started", r.GetLuaState().NewFunction(func(L *lua.LState) int {
+		close(started)
+		return 0
+	}))
+	result := runInBackground(r, `started(); while true do end`)
 
-	time.Sleep(100 * time.Millisecond) // Lets the script start
+	<-started
 	r.Interrupt()
 
 	if err := waitResult(t, result); err == nil {

@@ -69,3 +69,37 @@ func TestClassErrorsAreLuaErrors(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
+
+func TestCallMethod_ReturnsValuesInOrder(t *testing.T) {
+	L := lua.NewState()
+	defer L.Close()
+
+	if err := L.DoString(`obj = { pair = function(self, a) return a, a * 2, self.name end, name = "obj" }`); err != nil {
+		t.Fatal(err)
+	}
+	obj := L.GetGlobal("obj").(*lua.LTable)
+
+	ret, err := CallMethod(L, obj, "pair", 3, lua.LNumber(5))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ret[0] != lua.LNumber(5) || ret[1] != lua.LNumber(10) || ret[2] != lua.LString("obj") {
+		t.Fatalf("CallMethod returned %v", ret)
+	}
+	if top := L.GetTop(); top != 0 {
+		t.Errorf("the stack must be clean after the call, top = %d", top)
+	}
+
+	if _, err := CallMethod(L, obj, "missing", 0); err == nil {
+		t.Error("calling a missing method must fail")
+	}
+}
+
+func TestNew_EmptyName_ReturnsError(t *testing.T) {
+	L := lua.NewState()
+	defer L.Close()
+
+	if _, err := New(L, &Info{}); !errors.Is(err, ErrClassNameEmpty) {
+		t.Fatalf("expected ErrClassNameEmpty, got %v", err)
+	}
+}
