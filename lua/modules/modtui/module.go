@@ -29,9 +29,9 @@ func New(config *Config) *Module {
 		tuiConfig: config,
 	}
 
-	if serviceTui != nil {
-		serviceTui.SetCurrentScriptArgs(config.CurrentArgs)
-		serviceTui.UpdateConfig(&tui.Config{
+	if t := getTui(); t != nil {
+		t.SetCurrentScriptArgs(config.CurrentArgs)
+		t.UpdateConfig(&tui.Config{
 			OnSelectArgs: config.OnSelectArgs,
 		})
 	}
@@ -61,7 +61,7 @@ func (m *Module) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 
 // GetTui returns the text user interface instance
 func (m *Module) GetTui() *tui.Tui {
-	return serviceTui
+	return getTui()
 }
 
 // ShowTui shows the text user interface.
@@ -71,16 +71,15 @@ func (m *Module) ShowTui() error {
 		return nil
 	}
 
-	// Ensure that the text user interface is created
-	if serviceTui == nil {
-		serviceTui = tui.New(&tui.Config{
+	// Show the text user interface (creates it if it does not exist)
+	err := showTui(func() *tui.Tui {
+		return tui.New(&tui.Config{
 			Runtime:      m.Config.Runtime,
 			OnSelectArgs: m.tuiConfig.OnSelectArgs,
+			OnRawOutput:  enterRawOutput,
+			OnQuit:       quit,
 		})
-	}
-
-	// Show the text user interface
-	err := serviceTui.Show()
+	})
 	if err != nil {
 		return fmt.Errorf("error showing text user interface: %w", err)
 	}
@@ -90,8 +89,8 @@ func (m *Module) ShowTui() error {
 
 // Close closes the module. Can be called multiple times
 func (m *Module) Close() error {
-	if serviceTui != nil {
-		serviceTui.RemoveAllManagersFromSidebar()
+	if t := getTui(); t != nil {
+		t.RemoveAllManagersFromSidebar()
 	}
 
 	return nil

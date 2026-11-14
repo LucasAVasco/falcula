@@ -11,6 +11,7 @@ import (
 	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/help"
 	"github.com/LucasAVasco/falcula/lua/modules/modtui/tui/mainpage"
 
+	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
@@ -18,6 +19,13 @@ import (
 type Config struct {
 	Runtime      *luaruntime.Runtime
 	OnSelectArgs func(args []string)
+
+	// Called when the user chooses to leave the text user interface. Run in their own goroutine. If not provided, they only hide it
+	OnRawOutput func() // Switch to raw output mode (the services keep running)
+	OnQuit      func() // Quit falcula
+
+	// Screen used by the text user interface. Optional: uses the terminal if nil (tests use a simulation screen)
+	Screen tcell.Screen
 }
 
 // Tui is the text user interface widget.
@@ -34,17 +42,26 @@ type Tui struct {
 	mainPage *mainpage.MainPage
 	argsView *argsview.ArgsView
 	help     *help.HelpWidget
+
+	exitDialog            *tview.Modal
+	focusBeforeExitDialog tview.Primitive // Focused widget when the exit dialog was opened (restored when it closes)
 }
 
 // New creates a new text user interface
 func New(config *Config) *Tui {
+	t := &Tui{config: config}
+
 	if config.OnSelectArgs == nil {
 		config.OnSelectArgs = func(args []string) {}
 	}
-
-	return &Tui{
-		config: config,
+	if config.OnRawOutput == nil {
+		config.OnRawOutput = t.Hide
 	}
+	if config.OnQuit == nil {
+		config.OnQuit = t.Hide
+	}
+
+	return t
 }
 
 // Close the text user interface. Can be called multiple times.
@@ -71,18 +88,23 @@ func (t *Tui) Show() error {
 		t.SetCurrentScriptArgs(t.config.Runtime.GetScriptCurrentArgs())
 	}
 
-	t.waitGroup.Go(func() {
-		// Set loggers
-		t.config.Runtime.Logger.SetOnServiceLog(t.mainPage.ServiceLogs.Write)
-		t.config.Runtime.Logger.SetOnDebugLog(t.mainPage.DebugLogs.Write)
-		t.config.Runtime.Logger.SetOnErrorLog(t.mainPage.DebugLogs.WriteError)
+	// The logs are shown in the text user interface
+	t.config.Runtime.Logger.SetOnServiceLog(t.mainPage.ServiceLogs.Write)
+	t.config.Runtime.Logger.SetOnDebugLog(t.mainPage.DebugLogs.Write)
+	t.config.Runtime.Logger.SetOnErrorLog(t.mainPage.DebugLogs.WriteError)
 
-		// Run the app
-		err := t.app.Run()
+	// Runs the app. It is already marked as running when `Start` returns, so `Hide` always stops it
+	t.waitGroup.Add(1)
+	started := t.app.Start(func(err error) {
+		defer t.waitGroup.Done()
 		if err != nil {
 			t.config.Runtime.Logger.LogError(fmt.Errorf("error running 'tview' application: %w", err))
+			go t.config.OnQuit() // The user can not use the text user interface (e.g. there is no terminal)
 		}
 	})
+	if !started {
+		t.waitGroup.Done() // Already running
+	}
 
 	return nil
 }
@@ -102,7 +124,10 @@ func (t *Tui) Hide() {
 
 // IsVisible checks if the text user interface is visible
 func (t *Tui) IsVisible() bool {
-	return t.app.IsRunning()
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+
+	return t.app != nil && t.app.IsRunning()
 }
 
 // WaitForHide waits until the text user interface is hidden
@@ -118,5 +143,13 @@ func (t *Tui) UpdateConfig(config *Config) {
 
 	if config.OnSelectArgs != nil {
 		t.config.OnSelectArgs = config.OnSelectArgs
+	}
+
+	if config.OnRawOutput != nil {
+		t.config.OnRawOutput = config.OnRawOutput
+	}
+
+	if config.OnQuit != nil {
+		t.config.OnQuit = config.OnQuit
 	}
 }

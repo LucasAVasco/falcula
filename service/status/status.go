@@ -22,6 +22,11 @@ func (s Status) IsDoingNothing() bool {
 	return s == None || s == Ready || s == PrepareAborted || s == Ended || s == Stopped
 }
 
+// IsActive returns true if the service is doing something (preparing, running, or stopping one of these steps)
+func (s Status) IsActive() bool {
+	return s == Preparing || s == AbortingPrepare || s == Running || s == Stopping
+}
+
 // String returns the name of the status
 func (s Status) String() string {
 	switch s {

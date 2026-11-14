@@ -49,7 +49,7 @@ require (
 	github.com/spf13/cast v1.7.0 // indirect
 	go.yaml.in/yaml/v4 v4.0.0-rc.4
 	golang.org/x/crypto v0.51.0 // indirect
-	golang.org/x/sys v0.44.0 // indirect
-	golang.org/x/term v0.43.0 // indirect
+	golang.org/x/sys v0.44.0
+	golang.org/x/term v0.43.0
 	golang.org/x/text v0.37.0 // indirect
 )

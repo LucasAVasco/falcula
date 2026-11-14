@@ -10,7 +10,7 @@ func (m *MainPage) setMainPageKeyBinds() {
 		// Exit
 		{
 			Rune: 'q',
-			Desc: "Exit",
+			Desc: "Exit (switch to raw output mode or quit falcula)",
 			Bind: func() { m.OnExit() },
 		},
 		// Scroll the logs

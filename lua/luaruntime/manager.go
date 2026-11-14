@@ -33,6 +33,19 @@ func (r *Runtime) RemoveManager(man *manager.Manager) {
 	})
 }
 
+// HasActiveServices returns true if a service of any manager is active (preparing, running or stopping). Safe for concurrent use
+func (r *Runtime) HasActiveServices() bool {
+	for _, man := range r.GetManagers() {
+		for _, svc := range man.GetServices() {
+			if svc.GetStatus().IsActive() {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 // closeAllManagers closes all service managers and removes them from the runtime list. Safe for concurrent use
 func (r *Runtime) closeAllManagers() {
 	r.onSetScriptCurrentArgs([]string{})

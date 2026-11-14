@@ -91,8 +91,8 @@ func (a *App) runLuaOnce(config *runLuaConfig) (bool, error) {
 		}
 	}
 
-	// Wait until the TUI is closed or the user selects new arguments
-	for selectedArgs.Load() == nil && modtui.IsTuiVisible() {
+	// Wait until the user leaves the TUI (or the raw output mode) or selects new arguments
+	for selectedArgs.Load() == nil && waitForUser(config.Runtime) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
@@ -104,4 +104,17 @@ func (a *App) runLuaOnce(config *runLuaConfig) (bool, error) {
 	config.File = config.Runtime.GetLastExecutedFile()
 	config.Args = *newArgs
 	return true, nil
+}
+
+// waitForUser returns true while falcula must wait for the user: while the TUI is visible, and in raw output mode while a service is active
+// (the user can still open the TUI with Alt+T)
+func waitForUser(runtime *luaruntime.Runtime) bool {
+	switch modtui.CurrentMode() {
+	case modtui.ModeTui:
+		return true
+	case modtui.ModeRawOutput:
+		return runtime.HasActiveServices()
+	default:
+		return false
+	}
 }
