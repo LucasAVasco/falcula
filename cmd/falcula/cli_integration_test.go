@@ -121,3 +121,19 @@ func TestIntegrationCLI_Errors_ExitWithNonZeroCode(t *testing.T) {
 		t.Errorf("outside a project = %q (exit %d)", out, code)
 	}
 }
+
+func TestIntegrationCLI_NoTerminal_ForcesRawMode(t *testing.T) {
+	dir := newProject(t)
+	testutil.WriteFile(t, filepath.Join(dir, "tui.lua"), `
+local tui = require('falcula.tui')
+tui.show()
+print('after show')
+`)
+	testutil.WriteFile(t, filepath.Join(dir, "falcula.yaml"), "tasks: { tui: { lua: 'dofile(\"tui.lua\")' } }\n")
+
+	// The output is a pipe, so the TUI must not be shown even without `--raw`
+	out, code := runCLI(t, dir, "run", "tui")
+	if code != 0 || !strings.Contains(out, "after show") || strings.Contains(out, "\x1b[") {
+		t.Errorf("TUI task without a terminal = %q (exit %d)", out, code)
+	}
+}

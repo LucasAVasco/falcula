@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/LucasAVasco/falcula"
+	"github.com/LucasAVasco/falcula/internal/terminal"
 	"github.com/LucasAVasco/falcula/version"
 	"github.com/spf13/cobra"
 )
@@ -37,7 +38,8 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.PersistentFlags().Bool("raw", false, "Run in raw mode (disables TUI)")
+	rootCmd.PersistentFlags().Bool("raw", false,
+		"Run in raw mode (disables TUI). Forced in CI environments, when the output is redirected or the input is not a terminal")
 }
 
 // createFalculaApp create a new falcula application
@@ -45,6 +47,11 @@ func createFalculaApp(cmd *cobra.Command) (*falcula.App, error) {
 	rawMode, err := cmd.Flags().GetBool("raw")
 	if err != nil {
 		return nil, fmt.Errorf("error getting value of 'raw' flag: %w", err)
+	}
+
+	// The TUI needs a terminal to draw on and to read the user input from
+	if terminal.NonInteractiveReason() != terminal.ReasonNone {
+		rawMode = true
 	}
 
 	app, err := falcula.NewApp(rawMode)

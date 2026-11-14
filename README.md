@@ -34,11 +34,15 @@ falcula run [arguments...]
 
 This command will open the TUI and run the Lua script in the background with the given arguments.
 
-If you want to run the script without the TUI (e.g. in a CI environment), use the following command:
+If you want to run the script without the TUI, use the `--raw` flag:
 
 ```sh
-falcula run-raw [arguments...]
+falcula --raw run [arguments...]
 ```
+
+Falcula also runs without the TUI automatically when it can not use a terminal: in CI environments (`CI` or a CI provider variable is
+set), when the standard output is redirected (e.g. `falcula run task > log.txt` or `falcula run task | less`) or when the standard input
+is not a terminal.
 
 ## Running tests
 
