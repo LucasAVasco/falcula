@@ -85,12 +85,10 @@ func (l *Loader) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 		},
 		Methods: methods,
 	}
-	class, err := luaclass.New(L, &info, l.Config.Runtime.Logger.GetOnErrorWithoutReturn())
+	_, err := luaclass.Register(L, mod, &info, l.Config.Runtime.Logger.GetOnErrorWithoutReturn())
 	if err != nil {
-		return fmt.Errorf("error creating class '%s' of '%s' module: %w", info.Name, name, err)
+		return fmt.Errorf("error registering class of '%s' module: %w", name, err)
 	}
-
-	L.SetField(mod, info.Name, class)
 
 	return nil
 }

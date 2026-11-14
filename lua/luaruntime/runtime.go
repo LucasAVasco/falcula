@@ -131,19 +131,7 @@ func (r *Runtime) GetLastExecutedFile() string {
 func (r *Runtime) Run(luaCode string, args ...string) error {
 	r.lastExecutedFile = ""
 
-	// Lua state used to execute the file
-	state := r.GetLuaState()
-
-	// Sets the command line arguments
-	r.scriptCurrentArgs = args
-	argTable := state.NewTable()
-	for i, arg := range args {
-		argTable.RawSetInt(i+1, lua.LString(arg))
-	}
-	state.SetGlobal("arg", argTable)
-	r.onSetScriptCurrentArgs(args)
-
-	// Executes the file
+	state := r.prepareRun(args)
 	err := state.DoString(luaCode)
 	if err != nil {
 		return fmt.Errorf("error executing Lua code: %w", err)
@@ -156,10 +144,18 @@ func (r *Runtime) Run(luaCode string, args ...string) error {
 func (r *Runtime) RunFile(file string, args ...string) error {
 	r.lastExecutedFile = file
 
-	// Lua state used to execute the file
+	state := r.prepareRun(args)
+	err := state.DoFile(file)
+	if err != nil {
+		return fmt.Errorf("error executing file '%s': %w", file, err)
+	}
+	return nil
+}
+
+// prepareRun sets the command line arguments of the script (the global `arg` table) and returns the Lua state used to run it
+func (r *Runtime) prepareRun(args []string) *lua.LState {
 	state := r.GetLuaState()
 
-	// Sets the command line arguments
 	r.scriptCurrentArgs = args
 	argTable := state.NewTable()
 	for i, arg := range args {
@@ -168,10 +164,5 @@ func (r *Runtime) RunFile(file string, args ...string) error {
 	state.SetGlobal("arg", argTable)
 	r.onSetScriptCurrentArgs(args)
 
-	// Executes the file
-	err := state.DoFile(file)
-	if err != nil {
-		return fmt.Errorf("error executing file '%s': %w", file, err)
-	}
-	return nil
+	return state
 }

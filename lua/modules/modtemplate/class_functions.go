@@ -5,14 +5,20 @@ import (
 	"text/template"
 
 	"github.com/LucasAVasco/falcula/lua/luaclass"
-	"github.com/LucasAVasco/falcula/lua/luaerror"
 
 	lua "github.com/yuin/gopher-lua"
 )
 
-var templateClassFunctions = map[string]lua.LGFunction{
-	"set_func": func(L *lua.LState) int {
-		funcs := luaclass.GetAttribute(L, "_funcs").(template.FuncMap)
+// getTemplateFuncs gets the functions of the template object when called inside a method
+func getTemplateFuncs(L *lua.LState) template.FuncMap {
+	return luaclass.GetAttribute(L, "_funcs").(template.FuncMap)
+}
+
+var templateClassFunctions = func() map[string]lua.LGFunction {
+	functions := parseFunctions(2, getTemplateFuncs)
+
+	functions["set_func"] = func(L *lua.LState) int {
+		funcs := getTemplateFuncs(L)
 		functionName := L.ToString(2)
 		function := L.ToFunction(3)
 
@@ -32,45 +38,7 @@ var templateClassFunctions = map[string]lua.LGFunction{
 			return L.ToString(-1)
 		}
 		return 0
-	},
+	}
 
-	"parse_string": func(L *lua.LState) int {
-		str := L.ToString(2)
-		data := getDataFromLuaTable(L, L.Get(3))
-		funcs := luaclass.GetAttribute(L, "_funcs").(template.FuncMap)
-		output, err := parseString(str, data, funcs)
-		if err != nil {
-			return luaerror.Push(L, 1, err)
-		}
-
-		L.Push(lua.LString(output))
-		return 1
-	},
-
-	"parse_file": func(L *lua.LState) int {
-		srcFile := L.ToString(2)
-		data := getDataFromLuaTable(L, L.Get(3))
-		funcs := luaclass.GetAttribute(L, "_funcs").(template.FuncMap)
-		output, err := parseFile(srcFile, data, funcs)
-		if err != nil {
-			return luaerror.Push(L, 1, err)
-		}
-
-		L.Push(lua.LString(output))
-		return 1
-	},
-
-	"parse_and_save_file": func(L *lua.LState) int {
-		srcFile := L.ToString(2)
-		destFile := L.ToString(3)
-		data := getDataFromLuaTable(L, L.Get(4))
-		funcs := luaclass.GetAttribute(L, "_funcs").(template.FuncMap)
-		output, err := parseAndSaveFile(srcFile, destFile, data, funcs)
-		if err != nil {
-			return luaerror.Push(L, 1, err)
-		}
-
-		L.Push(lua.LString(output))
-		return 1
-	},
-}
+	return functions
+}()

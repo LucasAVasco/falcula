@@ -4,6 +4,7 @@ package modpath
 import (
 	"github.com/LucasAVasco/falcula/lua/luaerror"
 	"github.com/LucasAVasco/falcula/lua/luapath"
+	"github.com/LucasAVasco/falcula/lua/luatable"
 	"github.com/LucasAVasco/falcula/lua/modules/base"
 
 	lua "github.com/yuin/gopher-lua"
@@ -54,30 +55,9 @@ func (m *Module) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 
 		// Calls "abs" to each element of the table and returns a table with the absolute paths
 		"abs_list": func(L *lua.LState) int {
-			table := L.ToTable(1)
-
-			res := L.NewTable() // Response table
-			index := 1
-			var retError error
-
-			table.ForEach(func(k, v lua.LValue) {
-				path, err := luapath.GetAbs(L, v.String())
-				if err != nil {
-					retError = err
-					return
-				}
-
-				// Sets the absolute path in the response table
-				L.RawSetInt(res, index, lua.LString(path))
-				index++
+			return mapPaths(L, L.ToTable(1), func(path string) (string, error) {
+				return luapath.GetAbs(L, path)
 			})
-
-			if retError != nil {
-				return luaerror.Push(L, 1, retError)
-			}
-
-			L.Push(res)
-			return 1
 		},
 
 		"rel": func(L *lua.LState) int {
@@ -86,9 +66,7 @@ func (m *Module) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 
 			path, err := luapath.GetRel(L, path, base)
 			if err != nil {
-				L.Push(lua.LNil)
-				L.Push(lua.LString(err.Error()))
-				return 2
+				return luaerror.Push(L, 1, err)
 			}
 
 			L.Push(lua.LString(path))
@@ -97,33 +75,32 @@ func (m *Module) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 
 		// Calls "rel" to each element of the table and returns a table with the relative paths
 		"rel_list": func(L *lua.LState) int {
-			table := L.ToTable(1)
 			base := L.OptString(2, "")
-
-			res := L.NewTable() // Response table
-			index := 1
-			var retError error
-
-			table.ForEach(func(k, v lua.LValue) {
-				path, err := luapath.GetRel(L, v.String(), base)
-				if err != nil {
-					retError = err
-					return
-				}
-
-				// Sets the absolute path in the response table
-				L.RawSetInt(res, index, lua.LString(path))
-				index++
+			return mapPaths(L, L.ToTable(1), func(path string) (string, error) {
+				return luapath.GetRel(L, path, base)
 			})
-
-			if retError != nil {
-				return luaerror.Push(L, 1, retError)
-			}
-
-			L.Push(res)
-			return 1
 		},
 	})
 
 	return nil
+}
+
+// mapPaths applies the conversion function to each path of the table and pushes a list with the converted paths. Stops at the first error
+func mapPaths(L *lua.LState, paths *lua.LTable, convert func(path string) (string, error)) int {
+	res := L.NewTable()
+	err := luatable.ForEach(paths, func(_, value lua.LValue) error {
+		path, err := convert(value.String())
+		if err != nil {
+			return err
+		}
+
+		res.Append(lua.LString(path))
+		return nil
+	})
+	if err != nil {
+		return luaerror.Push(L, 1, err)
+	}
+
+	L.Push(res)
+	return 1
 }

@@ -3,6 +3,8 @@ package modproject
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 
 	"github.com/LucasAVasco/falcula/lua/luaclass"
 	"github.com/LucasAVasco/falcula/lua/luaerror"
@@ -25,65 +27,47 @@ func New() *Loader {
 func (l *Loader) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 	l.project = l.Config.Runtime.GetProject()
 
-	// Project
-	info := luaclass.Info{
-		Name: "Project",
-	}
+	onError := l.Config.Runtime.Logger.GetOnErrorWithoutReturn()
 
-	projectClass, err := luaclass.New(L, &info, l.Config.Runtime.Logger.GetOnErrorWithoutReturn())
+	projectClass, err := luaclass.Register(L, mod, &luaclass.Info{Name: "Project"}, onError)
 	if err != nil {
-		return fmt.Errorf("error creating class '%s' of '%s' module: %w", info.Name, name, err)
+		return fmt.Errorf("error registering class of '%s' module: %w", name, err)
 	}
 
-	L.SetField(mod, "Project", projectClass)
-
-	newProject := func(proj *project.Project) *lua.LTable {
-		newObj := luaclass.CreateInstance(L, projectClass)
-		luaclass.SetInstance(L, newObj, proj)
-		return newObj
-	}
-
-	// Task
-	info = luaclass.Info{
-		Name: "Task",
-	}
-
-	taskClass, err := luaclass.New(L, &info, l.Config.Runtime.Logger.GetOnErrorWithoutReturn())
+	taskClass, err := luaclass.Register(L, mod, &luaclass.Info{Name: "Task"}, onError)
 	if err != nil {
-		return fmt.Errorf("error creating class '%s' of '%s' module: %w", info.Name, name, err)
+		return fmt.Errorf("error registering class of '%s' module: %w", name, err)
 	}
 
-	L.SetField(mod, "Task", taskClass)
-
-	newTask := func(task *project.Task) *lua.LTable {
-		newObj := luaclass.CreateInstance(L, taskClass)
-		luaclass.SetInstance(L, newObj, task)
-		return newObj
-	}
-
-	// Command
-	info = luaclass.Info{
-		Name: "Command",
-	}
-
-	commandClass, err := luaclass.New(L, &info, l.Config.Runtime.Logger.GetOnErrorWithoutReturn())
+	commandClass, err := luaclass.Register(L, mod, &luaclass.Info{Name: "Command"}, onError)
 	if err != nil {
-		return fmt.Errorf("error creating class '%s' of '%s' module: %w", info.Name, name, err)
+		return fmt.Errorf("error registering class of '%s' module: %w", name, err)
 	}
 
-	L.SetField(mod, "Command", commandClass)
+	// Functions to wrap Go values in instances of the classes
+	newProject := func(L *lua.LState, proj *project.Project) *lua.LTable {
+		return newInstance(L, projectClass, proj)
+	}
 
-	newCommand := func(command *project.Command) *lua.LTable {
-		newObj := luaclass.CreateInstance(L, commandClass)
-		luaclass.SetInstance(L, newObj, command)
-		return newObj
+	newProjectList := func(L *lua.LState, projects map[string]*project.Project) *lua.LTable {
+		list := L.NewTable()
+		for _, proj := range projects {
+			list.Append(newProject(L, proj))
+		}
+		return list
+	}
+
+	newTask := func(L *lua.LState, task *project.Task) *lua.LTable {
+		return newInstance(L, taskClass, task)
+	}
+
+	newCommand := func(L *lua.LState, command *project.Command) *lua.LTable {
+		return newInstance(L, commandClass, command)
 	}
 
 	// Global functions
 	L.SetField(mod, "get_current_project", L.NewFunction(func(L *lua.LState) int {
-		object := luaclass.CreateInstance(L, projectClass)
-		luaclass.SetInstance(L, object, l.project)
-		L.Push(object)
+		L.Push(newProject(L, l.project))
 		return 1
 	}))
 
@@ -147,7 +131,7 @@ func (l *Loader) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 			if err != nil {
 				return luaerror.Push(L, 1, fmt.Errorf("error getting child project by name: %w", err))
 			}
-			L.Push(newProject(child))
+			L.Push(newProject(L, child))
 			return 1
 		},
 
@@ -159,12 +143,7 @@ func (l *Loader) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 				return luaerror.Push(L, 1, fmt.Errorf("error getting child projects: %w", err))
 			}
 
-			projectsInLua := L.NewTable()
-			for _, child := range childProjects {
-				projectsInLua.Append(newProject(child))
-			}
-			L.Push(projectsInLua)
-
+			L.Push(newProjectList(L, childProjects))
 			return 1
 		},
 
@@ -176,12 +155,7 @@ func (l *Loader) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 				return luaerror.Push(L, 1, fmt.Errorf("error getting all child projects: %w", err))
 			}
 
-			projectsInLua := L.NewTable()
-			for _, child := range childProjects {
-				projectsInLua.Append(newProject(child))
-			}
-			L.Push(projectsInLua)
-
+			L.Push(newProjectList(L, childProjects))
 			return 1
 		},
 
@@ -195,12 +169,7 @@ func (l *Loader) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 		"get_tasks_names": func(L *lua.LState) int {
 			proj := luaclass.GetInstance[*project.Project](L)
 
-			names := L.NewTable()
-			for name := range proj.Tasks {
-				names.Append(lua.LString(name))
-			}
-
-			L.Push(names)
+			L.Push(luatable.GetLuaTableFromStrings(L, slices.Collect(maps.Keys(proj.Tasks))))
 			return 1
 		},
 
@@ -222,7 +191,7 @@ func (l *Loader) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 			if err != nil {
 				return luaerror.Push(L, 1, fmt.Errorf("error getting task by name: %w", err))
 			}
-			L.Push(newTask(task))
+			L.Push(newTask(L, task))
 			return 1
 		},
 
@@ -231,7 +200,7 @@ func (l *Loader) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 
 			list := L.NewTable()
 			for _, task := range proj.Tasks {
-				list.Append(newTask(task))
+				list.Append(newTask(L, task))
 			}
 
 			L.Push(list)
@@ -248,7 +217,7 @@ func (l *Loader) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 
 			tasksMap := L.NewTable()
 			for name, task := range tasks {
-				tasksMap.RawSetString(name, newTask(task))
+				tasksMap.RawSetString(name, newTask(L, task))
 			}
 
 			L.Push(tasksMap)
@@ -269,10 +238,7 @@ func (l *Loader) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 	methods = map[string]lua.LGFunction{
 		"get_project": func(L *lua.LState) int {
 			task := luaclass.GetInstance[*project.Task](L)
-			projectObj := luaclass.CreateInstance(L, projectClass)
-			luaclass.SetInstance(L, projectObj, task.Project)
-			L.Push(projectObj)
-
+			L.Push(newProject(L, task.Project))
 			return 1
 		},
 
@@ -284,7 +250,7 @@ func (l *Loader) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 
 		"get_shell": func(L *lua.LState) int {
 			task := luaclass.GetInstance[*project.Task](L)
-			L.Push(newCommand(&task.Shell))
+			L.Push(newCommand(L, &task.Shell))
 			return 1
 		},
 
@@ -314,7 +280,7 @@ func (l *Loader) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 
 			err := l.Config.Runtime.GetOnRunTask()(task, subTask, args)
 			if err != nil {
-				return luaerror.Push(L, 1, fmt.Errorf("error running task: %w", err))
+				return luaerror.Push(L, 0, fmt.Errorf("error running task: %w", err))
 			}
 			return 0
 		},
@@ -341,4 +307,11 @@ func (l *Loader) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 	luaclass.SetMethods(L, commandClass, methods)
 
 	return nil
+}
+
+// newInstance creates an instance of a class that wraps a Go value
+func newInstance(L *lua.LState, class *lua.LTable, goInstance any) *lua.LTable {
+	instance := luaclass.CreateInstance(L, class)
+	luaclass.SetInstance(L, instance, goInstance)
+	return instance
 }

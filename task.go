@@ -32,7 +32,7 @@ func (a *App) RunTaskById(taskId string, args ...string) error {
 	return a.RunTask(task, subTask, args...)
 }
 
-// RunTaskById runs a task of the current project with the given arguments. The subtask is optional.
+// RunTask runs a task of the current project with the given arguments. The subtask is optional.
 func (a *App) RunTask(task *project.Task, subTask string, args ...string) error {
 	// Lua runtime
 	runtime, err := luaruntime.New(task.Project, func(task *project.Task, subTask string, args []string) error {
@@ -52,87 +52,83 @@ func (a *App) RunTask(task *project.Task, subTask string, args ...string) error 
 		return fmt.Errorf("error changing to task working directory: %w", err)
 	}
 
-	if task.Shell.IsNotEmpty() {
-		if task.Shell.List != nil {
-			cmdArgs := slices.Concat(task.Shell.List[1:], args) // Copies the list, so the task is not modified
-			cmd := process.CreateCmd(false, task.Shell.List[0], cmdArgs...)
-			a.configureTaskCmd(cmd, task, subTask)
+	switch {
+	case task.Shell.IsNotEmpty():
+		return a.runTaskShell(task, subTask, args)
 
-			err := cmd.Run()
-			if err != nil {
-				return fmt.Errorf("error running shell command: %w", err)
-			}
-
-		} else if task.Shell.String != "" {
-			code := task.Shell.String
-			err := a.runTaskShellScript(task, subTask, code, args)
-			if err != nil {
-				return fmt.Errorf("error running shell script: %w", err)
-			}
-
-		} else {
-			return fmt.Errorf("shell is empty")
-		}
-
-	} else if task.Lua != "" {
-		config := &runLuaConfig{
-			Runtime: runtime,
-			Code:    task.Lua,
-			Args:    args,
-			AfterRun: func(runtime *luaruntime.Runtime) error {
-				if subTask == "" {
-					return nil
-				}
-
-				err = handleReturnedLuaTask(runtime.GetLuaState(), subTask, args)
-				if err != nil {
-					return fmt.Errorf("error handling returned task: %w", err)
-				}
-				return nil
-			},
-		}
-
-		err = a.runLuaCode(config)
+	case task.Lua != "":
+		err = a.runLua(&runLuaConfig{
+			Runtime:  runtime,
+			Code:     task.Lua,
+			Args:     args,
+			AfterRun: runSubTaskAfterRun(subTask, args),
+		})
 		if err != nil {
 			return fmt.Errorf("error running Lua code: %w", err)
 		}
 
-	} else if task.ShellFile != "" {
-		code := "source " + task.ShellFile
-
-		err := a.runTaskShellScript(task, subTask, code, args)
+	case task.ShellFile != "":
+		err = a.runTaskShellScript(task, subTask, "source "+task.ShellFile, args)
 		if err != nil {
 			return fmt.Errorf("error running task shell script: %w", err)
 		}
 
-	} else if task.LuaFile != "" {
-		config := &runLuaConfig{
-			Runtime: runtime,
-			File:    task.LuaFile,
-			Args:    args,
-			AfterRun: func(runtime *luaruntime.Runtime) error {
-				if subTask == "" {
-					return nil
-				}
-
-				err = handleReturnedLuaTask(runtime.GetLuaState(), subTask, args)
-				if err != nil {
-					return fmt.Errorf("error handling returned task: %w", err)
-				}
-				return nil
-			},
-		}
-
-		err = a.runLuaFile(config)
+	case task.LuaFile != "":
+		err = a.runLua(&runLuaConfig{
+			Runtime:  runtime,
+			File:     task.LuaFile,
+			Args:     args,
+			AfterRun: runSubTaskAfterRun(subTask, args),
+		})
 		if err != nil {
 			return fmt.Errorf("error running Lua file: %w", err)
 		}
 
-	} else {
+	default:
 		return fmt.Errorf("there is no action defined for the task '%s'", task.Name)
 	}
 
 	return nil
+}
+
+// runTaskShell runs the `shell` field of a task. It can be a command (list) or a shell script (string)
+func (a *App) runTaskShell(task *project.Task, subTask string, args []string) error {
+	if task.Shell.List != nil {
+		cmdArgs := slices.Concat(task.Shell.List[1:], args) // Copies the list, so the task is not modified
+		cmd := process.CreateCmd(false, task.Shell.List[0], cmdArgs...)
+		a.configureTaskCmd(cmd, task, subTask)
+
+		err := cmd.Run()
+		if err != nil {
+			return fmt.Errorf("error running shell command: %w", err)
+		}
+		return nil
+	}
+
+	if task.Shell.String != "" {
+		err := a.runTaskShellScript(task, subTask, task.Shell.String, args)
+		if err != nil {
+			return fmt.Errorf("error running shell script: %w", err)
+		}
+		return nil
+	}
+
+	return fmt.Errorf("shell is empty")
+}
+
+// runSubTaskAfterRun returns a callback that runs the subtask returned by the Lua code or file. Does nothing if there is no subtask
+func runSubTaskAfterRun(subTask string, args []string) func(runtime *luaruntime.Runtime) error {
+	return func(runtime *luaruntime.Runtime) error {
+		if subTask == "" {
+			return nil
+		}
+
+		err := handleReturnedLuaTask(runtime.GetLuaState(), subTask, args)
+		if err != nil {
+			return fmt.Errorf("error handling returned task: %w", err)
+		}
+		return nil
+	}
 }
 
 // configureTaskCmd configures a task execution command

@@ -2,6 +2,7 @@ package falcula
 
 import (
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/LucasAVasco/falcula/lua/luaruntime"
@@ -12,7 +13,7 @@ import (
 // runLuaConfig is the configuration required to run a Lua code or file
 type runLuaConfig struct {
 	Runtime *luaruntime.Runtime
-	Code    string
+	Code    string   // Lua code to run. Ignored if `File` is set
 	File    string   // Path to the Lua file
 	Args    []string // Arguments provided to the code or file
 
@@ -20,100 +21,72 @@ type runLuaConfig struct {
 	AfterRun func(runtime *luaruntime.Runtime) error
 }
 
-// runLuaCode runs a Lua code. Waits for the user to close the TUI if it is visible
-func (a *App) runLuaCode(config *runLuaConfig) error {
-	// Runs the main code. Repeats it if the user selects new arguments
+// runLua runs the Lua code or file of the configuration. Waits for the user to close the TUI if it is visible. A Lua file runs again
+// (with the new arguments) each time the user selects new arguments in the TUI
+func (a *App) runLua(config *runLuaConfig) error {
+	for {
+		reRun, err := a.runLuaOnce(config)
+		if err != nil || !reRun {
+			return err
+		}
+	}
+}
 
-	// Loding modules
-	loader := modules.LoadAllModules(config.Runtime, &modules.AllModulesLoaderOptions{
-		RawMode:      a.rawMode,
-		OnSelectArgs: func(newArgs []string) {},
+// runLuaOnce runs the Lua code or file of the configuration and waits for the user to close the TUI or select new arguments. Returns true
+// if the user selected new arguments (the configuration is updated with them)
+func (a *App) runLuaOnce(config *runLuaConfig) (bool, error) {
+	var reRun atomic.Bool
+	var loader *modules.Loader
+
+	loader = modules.LoadAllModules(config.Runtime, &modules.AllModulesLoaderOptions{
+		RawMode: a.rawMode,
+		OnSelectArgs: func(newArgs []string) {
+			// Only Lua files can be re-run with new arguments
+			if config.File == "" {
+				return
+			}
+			defer reRun.Store(true)
+
+			config.File = config.Runtime.GetLastExecutedFile()
+			config.Args = newArgs
+
+			err := loader.Close()
+			if err != nil {
+				config.Runtime.Logger.LogError(fmt.Errorf("error closing Lua modules loader: %w", err))
+				config.Runtime.CloseLuaState()
+				return
+			}
+
+			config.Runtime.ResetLuaState()
+		},
 	})
 	defer loader.Close()
 
-	// Running the code
-	err := config.Runtime.Run(config.Code, config.Args...)
-	if err != nil {
-		config.Runtime.Logger.LogError(fmt.Errorf("error running Lua code: %w", err))
-	}
-
-	// Calling the after run callback
-	if config.AfterRun != nil {
-		err = config.AfterRun(config.Runtime)
-		if err != nil {
-			return fmt.Errorf("error calling callback after running Lua code: %w", err)
-		}
-	}
-
-	// Wait until the TUI is closed or the user selects new arguments
-	for {
-		if modtui.IsTuiVisible() {
-			time.Sleep(100 * time.Millisecond)
-			continue
-		}
-
-		break
-	}
-
-	return nil
-}
-
-// runLuaFile runs a Lua file. Waits for the user to close the TUI if it is visible
-func (a *App) runLuaFile(config *runLuaConfig) error {
-	// Runs the main Lua file. Repeats it if the user selects new arguments
-	for {
-		reRunScript := false
-		var loader *modules.Loader
-
-		// Loding modules
-		loader = modules.LoadAllModules(config.Runtime, &modules.AllModulesLoaderOptions{
-			RawMode: a.rawMode,
-			OnSelectArgs: func(newArgs []string) {
-				reRunScript = true
-				config.File = config.Runtime.GetLastExecutedFile()
-				config.Args = newArgs
-
-				err := loader.Close()
-				if err != nil {
-					config.Runtime.Logger.LogError(fmt.Errorf("error closing Lua modules loader: %w", err))
-					config.Runtime.CloseLuaState()
-					return
-				}
-
-				config.Runtime.ResetLuaState()
-			},
-		})
-		defer loader.Close()
-
-		// Running the file
+	// Running the code or file
+	if config.File != "" {
 		err := config.Runtime.RunFile(config.File, config.Args...)
 		if err != nil {
 			config.Runtime.Logger.LogError(fmt.Errorf("error running Lua file '%s': %w", config.File, err))
 		}
-
-		// Calling the after run callback
-		if config.AfterRun != nil {
-			err = config.AfterRun(config.Runtime)
-			if err != nil {
-				return fmt.Errorf("error calling callback after running Lua file: %w", err)
-			}
-		}
-
-		// Wait until the TUI is closed or the user selects new arguments
-		for {
-			if !reRunScript && modtui.IsTuiVisible() {
-				time.Sleep(100 * time.Millisecond)
-				continue
-			}
-
-			break
-		}
-
-		// Exit if the user closed the TUI without selecting new arguments
-		if !reRunScript {
-			break
+	} else {
+		err := config.Runtime.Run(config.Code, config.Args...)
+		if err != nil {
+			config.Runtime.Logger.LogError(fmt.Errorf("error running Lua code: %w", err))
 		}
 	}
 
-	return nil
+	// Calling the after run callback
+	if config.AfterRun != nil {
+		err := config.AfterRun(config.Runtime)
+		if err != nil {
+			return false, fmt.Errorf("error calling callback after running Lua: %w", err)
+		}
+	}
+
+	// Wait until the TUI is closed or the user selects new arguments
+	for !reRun.Load() && modtui.IsTuiVisible() {
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	return reRun.Load(), nil
 }

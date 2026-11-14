@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/LucasAVasco/falcula/lua/luadata"
 	"github.com/LucasAVasco/falcula/lua/luatable"
 
 	lua "github.com/yuin/gopher-lua"
@@ -25,6 +26,17 @@ type Info struct {
 
 	// Class methods. Automatically added to the class, you do not need to do it manually. Optional value.
 	Methods map[string]Method
+}
+
+// Register creates a new class table (see `New`) and sets it in the `info.Name` field of the module table. Returns the class table
+func Register(L *lua.LState, mod *lua.LTable, info *Info, onError func(err error)) (*lua.LTable, error) {
+	class, err := New(L, info, onError)
+	if err != nil {
+		return nil, fmt.Errorf("error creating class '%s': %w", info.Name, err)
+	}
+
+	L.SetField(mod, info.Name, class)
+	return class, nil
 }
 
 // New creates a new class table
@@ -117,9 +129,7 @@ func GetAttribute(L *lua.LState, name string) any {
 
 // SetAttribute sets a object attribute. Must not be used outside a class method
 func SetAttribute(L *lua.LState, object *lua.LTable, field string, value any) {
-	userData := L.NewUserData()
-	userData.Value = value
-	L.SetField(object, field, userData)
+	L.SetField(object, field, luadata.NewUserData(L, value))
 }
 
 // CallMethod calls a object method

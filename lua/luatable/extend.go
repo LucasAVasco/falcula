@@ -53,42 +53,17 @@ func ExtendBehaviorFromString(s string) ExtendBehavior {
 
 // Extend merge several tables into the first one. Only the first table is modified. The behavior defines how to handle duplicated keys
 func Extend(behavior ExtendBehavior, destTable *lua.LTable, tables ...*lua.LTable) error {
-	for i, table := range tables {
-		err := ForEach(table, func(key, value lua.LValue) error {
-			// Sequences are appended
-			if key.Type() == lua.LTNumber {
-				destTable.Append(value)
-				return nil
-			}
-
-			// Key-value pairs are merged
-			if behavior == ExtendBehaviorForce {
-				destTable.RawSet(key, value)
-				return nil
-			}
-
-			if destTable.RawGet(key) == lua.LNil {
-				destTable.RawSet(key, value)
-				return nil
-			}
-
-			if behavior == ExtendBehaviorError {
-				return fmt.Errorf("duplicated key '%s'", key)
-			}
-
-			return nil
-		})
-		if err != nil {
-			return fmt.Errorf("error extending table at index %d: %w", i, err)
-		}
-	}
-
-	return nil
+	return extend(behavior, false, destTable, tables)
 }
 
 // DeepExtend merge several tables into the first one recursively. Only the first table is modified. The behavior defines how to handle
 // duplicated keys
 func DeepExtend(behavior ExtendBehavior, destTable *lua.LTable, tables ...*lua.LTable) error {
+	return extend(behavior, true, destTable, tables)
+}
+
+// extend merges the tables into the destination table. If `deep` is true, nested tables present in both sides are merged recursively
+func extend(behavior ExtendBehavior, deep bool, destTable *lua.LTable, tables []*lua.LTable) error {
 	for i, table := range tables {
 		err := ForEach(table, func(key, value lua.LValue) error {
 			// Sequences are appended
@@ -98,35 +73,37 @@ func DeepExtend(behavior ExtendBehavior, destTable *lua.LTable, tables ...*lua.L
 			}
 
 			// If both values are tables, then deep extend
-			tValue := destTable.RawGet(key)
-			if tValue.Type() == lua.LTTable && value.Type() == lua.LTTable {
-				err := DeepExtend(behavior, tValue.(*lua.LTable), value.(*lua.LTable))
-				if err != nil {
-					return fmt.Errorf("error deep extending table: %w", err)
+			if deep {
+				destValue, destIsTable := destTable.RawGet(key).(*lua.LTable)
+				srcValue, srcIsTable := value.(*lua.LTable)
+				if destIsTable && srcIsTable {
+					err := extend(behavior, true, destValue, []*lua.LTable{srcValue})
+					if err != nil {
+						return fmt.Errorf("error deep extending table: %w", err)
+					}
+					return nil
 				}
-				return nil
 			}
 
-			// Both values are not tables, need to override
-			if behavior == ExtendBehaviorForce {
-				destTable.RawSet(key, value)
-				return nil
-			}
-
-			if destTable.RawGet(key) == lua.LNil {
-				destTable.RawSet(key, value)
-				return nil
-			}
-
-			if behavior == ExtendBehaviorError {
-				return fmt.Errorf("duplicated key '%s'", key)
-			}
-
-			return nil
+			return mergeKey(behavior, destTable, key, value)
 		})
 		if err != nil {
 			return fmt.Errorf("error extending table at index %d: %w", i, err)
 		}
+	}
+
+	return nil
+}
+
+// mergeKey sets a key-value pair in the destination table. The behavior defines how to handle a key that is already present
+func mergeKey(behavior ExtendBehavior, destTable *lua.LTable, key, value lua.LValue) error {
+	if behavior == ExtendBehaviorForce || destTable.RawGet(key) == lua.LNil {
+		destTable.RawSet(key, value)
+		return nil
+	}
+
+	if behavior == ExtendBehaviorError {
+		return fmt.Errorf("duplicated key '%s'", key)
 	}
 
 	return nil

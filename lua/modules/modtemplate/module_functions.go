@@ -2,6 +2,7 @@ package modtemplate
 
 import (
 	"reflect"
+	"text/template"
 
 	"github.com/LucasAVasco/falcula/lua/luaerror"
 
@@ -53,41 +54,43 @@ func getDataFromLuaTable(L *lua.LState, value lua.LValue) any {
 	}
 }
 
-var moduleFunctions = map[string]lua.LGFunction{
-	"parse_string": func(L *lua.LState) int {
-		str := L.ToString(1)
-		data := getDataFromLuaTable(L, L.Get(2))
-		output, err := parseString(str, data, nil)
-		if err != nil {
-			return luaerror.Push(L, 1, err)
-		}
+var moduleFunctions = parseFunctions(1, func(L *lua.LState) template.FuncMap { return nil })
 
-		L.Push(lua.LString(output))
-		return 1
-	},
+// parseFunctions returns the functions that parse templates (`parse_string`, `parse_file` and `parse_and_save_file`). Their arguments
+// start at the `firstArg` index (the index 1 is the `self` argument of methods). The `getFuncs` function returns the extra functions
+// available in the templates
+func parseFunctions(firstArg int, getFuncs func(L *lua.LState) template.FuncMap) map[string]lua.LGFunction {
+	return map[string]lua.LGFunction{
+		"parse_string": func(L *lua.LState) int {
+			str := L.ToString(firstArg)
+			data := getDataFromLuaTable(L, L.Get(firstArg+1))
+			output, err := parseString(str, data, getFuncs(L))
+			return pushParseResult(L, output, err)
+		},
 
-	"parse_file": func(L *lua.LState) int {
-		srcFile := L.ToString(1)
-		data := getDataFromLuaTable(L, L.Get(2))
-		output, err := parseFile(srcFile, data, nil)
-		if err != nil {
-			return luaerror.Push(L, 1, err)
-		}
+		"parse_file": func(L *lua.LState) int {
+			srcFile := L.ToString(firstArg)
+			data := getDataFromLuaTable(L, L.Get(firstArg+1))
+			output, err := parseFile(srcFile, data, getFuncs(L))
+			return pushParseResult(L, output, err)
+		},
 
-		L.Push(lua.LString(output))
-		return 1
-	},
+		"parse_and_save_file": func(L *lua.LState) int {
+			srcFile := L.ToString(firstArg)
+			destFile := L.ToString(firstArg + 1)
+			data := getDataFromLuaTable(L, L.Get(firstArg+2))
+			output, err := parseAndSaveFile(srcFile, destFile, data, getFuncs(L))
+			return pushParseResult(L, output, err)
+		},
+	}
+}
 
-	"parse_and_save_file": func(L *lua.LState) int {
-		srcFile := L.ToString(1)
-		destFile := L.ToString(2)
-		data := getDataFromLuaTable(L, L.Get(3))
-		output, err := parseAndSaveFile(srcFile, destFile, data, nil)
-		if err != nil {
-			return luaerror.Push(L, 1, err)
-		}
+// pushParseResult pushes the output of a template or the error
+func pushParseResult(L *lua.LState, output string, err error) int {
+	if err != nil {
+		return luaerror.Push(L, 1, err)
+	}
 
-		L.Push(lua.LString(output))
-		return 1
-	},
+	L.Push(lua.LString(output))
+	return 1
 }
