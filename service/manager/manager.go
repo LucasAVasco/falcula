@@ -65,12 +65,9 @@ func (m *Manager) RemoveService(svc *enhanced.EnhancedService, force bool, onSer
 	m.serviceListMutex.Lock()
 	defer m.serviceListMutex.Unlock()
 
-	for i, s := range m.services {
-		if s == svc {
-			m.services = append(m.services[:i], m.services[i+1:]...)
-			break
-		}
-	}
+	m.services = slices.DeleteFunc(m.services, func(s *enhanced.EnhancedService) bool {
+		return s == svc
+	})
 
 	return nil
 }
@@ -78,8 +75,7 @@ func (m *Manager) RemoveService(svc *enhanced.EnhancedService, force bool, onSer
 // RemoveServices removes multiple services from the manager. The onServiceStop callback is optional and will be called when the service is
 // stopped. The force parameter is used to force the stop (instead of execute a graceful shutdown)
 func (m *Manager) RemoveServices(services []*enhanced.EnhancedService, force bool, onServiceStop enhanced.ExitStepCallback) error {
-	// Iterates over a copy because `services` may be the same slice returned by `GetServices`, which is modified when removing a service
-	for _, svc := range slices.Clone(services) {
+	for _, svc := range services {
 		err := m.RemoveService(svc, force, onServiceStop)
 		if err != nil {
 			return fmt.Errorf("error removing enhanced service '%s': %w", svc.GetName(), err)
@@ -89,17 +85,20 @@ func (m *Manager) RemoveServices(services []*enhanced.EnhancedService, force boo
 	return nil
 }
 
-// GetServices returns the managed enhanced services. You should not modify the returned slice, only use its services. If you want to add or
-// remove services, use the AddService and RemoveService methods
+// GetServices returns a copy of the list of managed enhanced services. If you want to add or remove services, use the AddService and
+// RemoveService methods
 func (m *Manager) GetServices() []*enhanced.EnhancedService {
-	return m.services
+	m.serviceListMutex.Lock()
+	defer m.serviceListMutex.Unlock()
+
+	return slices.Clone(m.services)
 }
 
 // routineForEachService executes a callback for each service in a goroutine and returns a waiter with the results of the callbacks
 func (m *Manager) routineForEachService(callback func(svc *enhanced.EnhancedService) (*iface.ExitInfo, error)) *waiter.Waiter {
 	waiter := waiter.Waiter{}
 
-	for _, svc := range m.services {
+	for _, svc := range m.GetServices() {
 		waiter.Go(func() {
 			exitCode, err := callback(svc)
 
@@ -235,7 +234,7 @@ func (m *Manager) RunSerial(onServicePrepared enhanced.ExitStepCallback, onServi
 	}
 
 	// Running the services
-	for _, svc := range m.services {
+	for _, svc := range m.GetServices() {
 		exitInfo, err := svc.Run()
 		if err != nil {
 			err = fmt.Errorf("error running enhanced service '%s': %w", svc.GetName(), err)

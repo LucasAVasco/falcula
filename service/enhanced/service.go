@@ -4,6 +4,7 @@ package enhanced
 import (
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/LucasAVasco/falcula/service/empty"
 	"github.com/LucasAVasco/falcula/service/iface"
@@ -23,11 +24,15 @@ func exitInfoHasError(exitInfo *iface.ExitInfo) bool {
 }
 
 // Enhances the service with status and functions to control it
+//
+// The status and the current step are safe for concurrent access
 type EnhancedService struct {
 	svc       iface.Service
-	status    status.Status
 	callbacks *Callbacks
-	step      iface.Step
+
+	mutex  sync.Mutex // Protects the fields below
+	status status.Status
+	step   iface.Step
 }
 
 // NewEnhancedService returns a new EnhancedService. The callbacks parameter is optional
@@ -50,12 +55,15 @@ func (e *EnhancedService) GetName() string {
 }
 
 func (e *EnhancedService) GetStatus() status.Status {
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
+
 	return e.status
 }
 
 // Disable disables the service. It can not be prepared or started until it is enabled again
 func (e *EnhancedService) Disable() error {
-	if !e.status.IsDoingNothing() {
+	if !e.GetStatus().IsDoingNothing() {
 		return fmt.Errorf(
 			"the service '%s' must not do anything when disabling it: %w",
 			e.GetName(),
@@ -70,7 +78,7 @@ func (e *EnhancedService) Disable() error {
 
 // Enable enables the service. It can be prepared or started again
 func (e *EnhancedService) Enable() error {
-	if e.status != status.Disabled {
+	if e.GetStatus() != status.Disabled {
 		return fmt.Errorf(
 			"the service '%s' must be disabled when enabling it: %w",
 			e.GetName(),
@@ -83,8 +91,31 @@ func (e *EnhancedService) Enable() error {
 }
 
 func (e *EnhancedService) setStatus(status status.Status) {
+	e.mutex.Lock()
 	e.status = status
+	e.mutex.Unlock()
+
 	e.callbacks.OnServiceStatusChanged(e)
+}
+
+// getStep returns the current step (preparing or running)
+func (e *EnhancedService) getStep() iface.Step {
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
+
+	return e.step
+}
+
+// setStep sets the current step. Uses an empty step if it is nil
+func (e *EnhancedService) setStep(step iface.Step) {
+	if step == nil {
+		step = empty.New()
+	}
+
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
+
+	e.step = step
 }
 
 // onStepExit returns the callback called when a step ends. It updates the status of the service according to the exit information: Error
@@ -118,52 +149,48 @@ func (e *EnhancedService) checkStepResult(action string, exitInfo *iface.ExitInf
 
 // StartPrepare starts the preparing step
 func (e *EnhancedService) StartPrepare() error {
-	if e.status == status.Disabled {
+	if e.GetStatus() == status.Disabled {
 		return nil
 	}
 
-	if e.status != status.None {
+	if e.GetStatus() != status.None {
 		return fmt.Errorf("service '%s' must not have a status associated with it when preparing it: %w", e.GetName(), ErrInvalidStatus)
 	}
 
 	// Starts the preparing step
 	e.setStatus(status.Preparing)
-	var err error
-	e.step, err = e.svc.Prepare(e.onStepExit(status.Ready, status.PrepareAborted))
+	step, err := e.svc.Prepare(e.onStepExit(status.Ready, status.PrepareAborted))
 	if err != nil {
+		e.setStatus(status.Error)
 		return fmt.Errorf("error preparing service '%s': %w", e.GetName(), err)
 	}
-
-	// Fallback to an empty step
-	if e.step == nil {
-		e.step = empty.New()
-	}
+	e.setStep(step)
 
 	return nil
 }
 
 // WaitPrepare waits the preparing step to finish and returns its exit information if any
 func (e *EnhancedService) WaitPrepare() (*iface.ExitInfo, error) {
-	if e.status == status.Disabled {
+	if e.GetStatus() == status.Disabled {
 		return &iface.ExitInfo{}, nil
 	}
 
-	if e.status != status.Preparing && e.status != status.Ready {
+	if e.GetStatus() != status.Preparing && e.GetStatus() != status.Ready {
 		return nil, fmt.Errorf(
 			"service '%s' is not preparing or ready (current status: %s): %w",
 			e.GetName(),
-			e.status,
+			e.GetStatus(),
 			ErrInvalidStatus,
 		)
 	}
 
-	exitInfo, err := e.step.Wait()
+	exitInfo, err := e.getStep().Wait()
 	return exitInfo, e.checkStepResult("waiting prepare step", exitInfo, err)
 }
 
 // Prepare starts the preparing step and waits it to finish. Returns its exit information if any
 func (e *EnhancedService) Prepare() (*iface.ExitInfo, error) {
-	if e.status == status.Disabled {
+	if e.GetStatus() == status.Disabled {
 		return &iface.ExitInfo{}, nil
 	}
 
@@ -185,70 +212,66 @@ func (e *EnhancedService) Prepare() (*iface.ExitInfo, error) {
 //
 // The abort operation may affect the returned exit information
 func (e *EnhancedService) AbortPrepare(force bool) (*iface.ExitInfo, error) {
-	if e.status == status.Disabled {
+	if e.GetStatus() == status.Disabled {
 		return &iface.ExitInfo{}, nil
 	}
 
-	if e.status.IsDoingNothing() {
+	if e.GetStatus().IsDoingNothing() {
 		return nil, nil
 	}
 
-	if e.status != status.Preparing && e.status != status.AbortingPrepare {
+	if e.GetStatus() != status.Preparing && e.GetStatus() != status.AbortingPrepare {
 		return nil, fmt.Errorf("service '%s' is not preparing: %w", e.GetName(), ErrInvalidStatus)
 	}
 
 	e.setStatus(status.AbortingPrepare)
-	exitInfo, err := e.step.Abort(force)
+	exitInfo, err := e.getStep().Abort(force)
 	return exitInfo, e.checkStepResult("aborting prepare step", exitInfo, err)
 }
 
 // Start starts the main step. Must be called after the service be prepared
 func (e *EnhancedService) Start() error {
-	if e.status == status.Disabled {
+	if e.GetStatus() == status.Disabled {
 		return nil
 	}
 
-	if e.status != status.Ready {
+	if e.GetStatus() != status.Ready {
 		return fmt.Errorf("service '%s' is not ready to start: %w", e.GetName(), ErrInvalidStatus)
 	}
 
 	// Starts the main step
 	e.setStatus(status.Running)
-	var err error
-	e.step, err = e.svc.Start(e.onStepExit(status.Ended, status.Stopped))
+	step, err := e.svc.Start(e.onStepExit(status.Ended, status.Stopped))
 	if err != nil {
+		e.setStatus(status.Error)
 		return fmt.Errorf("error starting service '%s': %w", e.GetName(), err)
 	}
-
-	// Fallback to an empty step
-	if e.step == nil {
-		e.step = empty.New()
-	}
+	e.setStep(step)
 
 	return nil
 }
 
 // Wait waits the main step to finish and returns its exit information if any
 func (e *EnhancedService) Wait() (*iface.ExitInfo, error) {
-	if e.status == status.Disabled {
+	if e.GetStatus() == status.Disabled {
 		return &iface.ExitInfo{}, nil
 	}
 
-	if e.status != status.Running && e.status != status.Ended {
+	if e.GetStatus() != status.Running && e.GetStatus() != status.Ended {
 		return nil, fmt.Errorf(
 			"service '%s' is not running or ended (current status: %s): %w",
 			e.GetName(),
-			e.status,
+			e.GetStatus(),
 			ErrInvalidStatus,
 		)
 	}
 
-	return e.step.Wait()
+	return e.getStep().Wait()
 }
 
 // Run starts the main step and waits it to finish. Returns its exit information if any
 func (e *EnhancedService) Run() (*iface.ExitInfo, error) {
-	if e.status == status.Disabled {
+	if e.GetStatus() == status.Disabled {
 		return &iface.ExitInfo{}, nil
 	}
 
@@ -266,21 +289,21 @@ func (e *EnhancedService) Run() (*iface.ExitInfo, error) {
 //
 // The stop operation may affect the returned exit information
 func (e *EnhancedService) Stop(force bool) (*iface.ExitInfo, error) {
-	if e.status == status.Disabled {
+	if e.GetStatus() == status.Disabled {
 		return &iface.ExitInfo{}, nil
 	}
 
-	if e.status.IsDoingNothing() {
+	if e.GetStatus().IsDoingNothing() {
 		return nil, nil
 	}
 
-	if e.status != status.Running && e.status != status.Stopping {
+	if e.GetStatus() != status.Running && e.GetStatus() != status.Stopping {
 		return nil, fmt.Errorf("service '%s' is not running: %w", e.GetName(), ErrInvalidStatus)
 	}
 
 	// Stops the waiter
 	e.setStatus(status.Stopping)
-	exitInfo, err := e.step.Abort(force)
+	exitInfo, err := e.getStep().Abort(force)
 	if err := e.checkStepResult("aborting running step", exitInfo, err); err != nil {
 		return exitInfo, err
 	}
@@ -293,15 +316,15 @@ func (e *EnhancedService) Stop(force bool) (*iface.ExitInfo, error) {
 // AbortPrepareOrStop aborts the preparing step (if preparing) or stops the running step (if running).The force parameter is used to force
 // the abort (instead of execute a graceful shutdown)
 func (e *EnhancedService) AbortPrepareOrStop(force bool) (*iface.ExitInfo, error) {
-	if e.status == status.Disabled {
+	if e.GetStatus() == status.Disabled {
 		return &iface.ExitInfo{}, nil
 	}
 
-	if e.status.IsDoingNothing() {
+	if e.GetStatus().IsDoingNothing() {
 		return nil, nil
 	}
 
-	switch e.status {
+	switch e.GetStatus() {
 	case status.Preparing, status.AbortingPrepare:
 		exitInfo, err := e.AbortPrepare(force)
 		if err != nil {
@@ -324,16 +347,16 @@ func (e *EnhancedService) AbortPrepareOrStop(force bool) (*iface.ExitInfo, error
 // Reset resets the service to the initial state (None) and returns a exit information related to the process if any. The force parameter is
 // used to force the abort (instead of execute a graceful shutdown)
 func (e *EnhancedService) Reset(force bool) (*iface.ExitInfo, error) {
-	if e.status == status.Disabled {
+	if e.GetStatus() == status.Disabled {
 		return &iface.ExitInfo{}, nil
 	}
 
 	// Does not need to reset if the service never started
-	if e.status == status.None {
+	if e.GetStatus() == status.None {
 		return nil, nil
 	}
 
-	if e.status == status.Error {
+	if e.GetStatus() == status.Error {
 		e.setStatus(status.None)
 		return nil, nil
 	}
@@ -352,7 +375,7 @@ func (e *EnhancedService) Reset(force bool) (*iface.ExitInfo, error) {
 
 // Restart restarts the service. The force parameter is used to force the abort (instead of execute a graceful shutdown)
 func (e *EnhancedService) Restart(force bool) (*iface.ExitInfo, error) {
-	if e.status == status.Disabled {
+	if e.GetStatus() == status.Disabled {
 		return &iface.ExitInfo{}, nil
 	}
 	// Resets the service

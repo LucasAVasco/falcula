@@ -1,6 +1,7 @@
 package manager
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/LucasAVasco/falcula/service/iface"
@@ -22,6 +23,25 @@ func TestRemoveServicesRemovesAllWhenPassedGetServices(t *testing.T) {
 	if err := m.RemoveServices(m.GetServices(), false, nil); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
+	if got := len(m.GetServices()); got != 0 {
+		t.Fatalf("expected no services left, got %d", got)
+	}
+}
+
+func TestConcurrentServiceListAccess(t *testing.T) {
+	m := New("test")
+
+	var wg sync.WaitGroup
+	for i := range 8 {
+		wg.Go(func() {
+			svc := m.AddService(&fakeService{name: string(rune('a' + i))}, nil)
+			_ = m.Prepare(nil).Wait()
+			_ = m.GetServices()
+			_ = m.RemoveService(svc, true, nil)
+		})
+	}
+	wg.Wait()
 
 	if got := len(m.GetServices()); got != 0 {
 		t.Fatalf("expected no services left, got %d", got)

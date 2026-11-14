@@ -3,6 +3,7 @@ package adapter
 import (
 	"fmt"
 	"sync"
+	"sync/atomic"
 
 	"github.com/LucasAVasco/falcula/process"
 	"github.com/LucasAVasco/falcula/service/iface"
@@ -12,7 +13,7 @@ import (
 type SerialProcessesStep struct {
 	processes []*process.Process
 
-	aborted    bool
+	aborted    atomic.Bool
 	waitGroup  sync.WaitGroup
 	exitInfo   *iface.ExitInfo
 	startError error
@@ -20,14 +21,14 @@ type SerialProcessesStep struct {
 
 // SerialProcessesToStep converts a list of processes to a Step that runs them serially and ends when all processes end
 func SerialProcessesToStep(processes []*process.Process, onEnd iface.OnExitCallback) iface.Step {
-	s := SerialProcessesStep{
+	s := &SerialProcessesStep{
 		processes: processes,
 		exitInfo:  &iface.ExitInfo{},
 	}
 
 	s.waitGroup.Go(func() {
 		for _, process := range s.processes {
-			if s.aborted {
+			if s.aborted.Load() {
 				break
 			}
 
@@ -48,7 +49,7 @@ func SerialProcessesToStep(processes []*process.Process, onEnd iface.OnExitCallb
 		}
 	})
 
-	return &s
+	return s
 }
 
 func (s *SerialProcessesStep) Wait() (*iface.ExitInfo, error) {
@@ -57,13 +58,10 @@ func (s *SerialProcessesStep) Wait() (*iface.ExitInfo, error) {
 }
 
 func (s *SerialProcessesStep) Abort(force bool) (*iface.ExitInfo, error) {
-	s.aborted = true
+	s.aborted.Store(true)
 
+	// NOTE(LucasAVasco): processes that have not started yet are also stopped. It prevents them from starting
 	for _, process := range s.processes {
-		if !process.Started() {
-			continue
-		}
-
 		exitInfo, err := process.Stop(force)
 		if err != nil {
 			return exitInfo, fmt.Errorf("error stopping process: %w", err)

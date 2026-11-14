@@ -3,6 +3,7 @@ package multiplexer
 
 import (
 	"sync"
+	"sync/atomic"
 
 	"github.com/fatih/color"
 )
@@ -12,17 +13,16 @@ type Callback func(client *Client, b []byte) (int, error)
 
 // Multiplexer is the log multiplexer. It generates clients that send logs to the log multiplexer
 type Multiplexer struct {
-	callback     Callback   // Called when a log is written
-	mutex        sync.Mutex // Ensures only one log is written at a time
-	nextClientId uint       // Client ID. Auto-incremented
+	callback     Callback      // Called when a log is written
+	mutex        sync.Mutex    // Ensures only one log is written at a time
+	nextClientId atomic.Uint64 // Next client ID. Auto-incremented
 }
 
 func New(callback Callback) *Multiplexer {
 	m := Multiplexer{
-		mutex:        sync.Mutex{},
-		callback:     callback,
-		nextClientId: 1,
+		callback: callback,
 	}
+	m.nextClientId.Store(1)
 
 	return &m
 }
@@ -40,11 +40,8 @@ func (m *Multiplexer) NewClient(name string, level string, color *color.Color) *
 		name:  name,
 		level: level,
 		clr:   color,
-		id:    m.nextClientId,
+		id:    uint(m.nextClientId.Add(1) - 1),
 	}
-
-	// Updates the client ID
-	m.nextClientId++
 
 	return &w
 }

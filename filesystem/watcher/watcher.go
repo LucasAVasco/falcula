@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
+	"sync"
 
 	"github.com/LucasAVasco/falcula/filesystem"
 	"github.com/LucasAVasco/falcula/git"
@@ -35,14 +36,22 @@ type WatcherOpts struct {
 
 // Watcher is a file system Watcher. It is used to watch for file system changes and call a callback function when an event is triggered.
 type Watcher struct {
-	watcher      *fsnotify.Watcher
+	watcher *fsnotify.Watcher
+	opts    *WatcherOpts
+
+	// Files to watch. Shared between the routine that listens for events and the methods that add files
+	mutex        sync.Mutex
 	vcsFilters   map[string]*ignore.Filter
 	filesToWatch map[string]bool
 	dirsToWatch  map[string]bool
+
+	// Result of the routine that listens for events
 	routineError chan error
-	opts         *WatcherOpts
-	closed       bool
-	closeErr     error
+	waitOnce     sync.Once
+	waitErr      error
+
+	closeOnce sync.Once
+	closeErr  error
 }
 
 // NewWatcher creates a new file system Watcher.
@@ -74,12 +83,9 @@ func NewWatcher(callback WatcherCallback, opts *WatcherOpts) (*Watcher, error) {
 
 // Close closes the watcher. Can be called multiple times
 func (w *Watcher) Close() error {
-	if w.closed {
-		return w.closeErr
-	}
-	w.closed = true
-
-	w.closeErr = w.watcher.Close()
+	w.closeOnce.Do(func() {
+		w.closeErr = w.watcher.Close()
+	})
 	return w.closeErr
 }
 
@@ -92,36 +98,12 @@ func (w *Watcher) listenEvents(callback WatcherCallback) error {
 				return nil
 			}
 
-			// Get the file and directory
 			file := filepath.Clean(event.Name)
-			var dir string
-			isDir, err := filesystem.FileIsDir(file)
-			if errors.Is(err, fs.ErrNotExist) {
-				// The file was removed or renamed, so it can not be checked anymore. Uses the tracked directories instead
-				isDir = w.dirsToWatch[file]
-			} else if err != nil {
-				return fmt.Errorf("error checking if '%s' is a directory: %w", file, err)
-			}
-			if isDir {
-				dir = file
-			} else {
-				dir = filepath.Dir(file)
-			}
-
-			// Only call the callback if the file or directory is tracked
-			_, isTrackedDir := w.dirsToWatch[dir]
-			_, isTrackedFile := w.filesToWatch[file]
-			if !isTrackedDir && !isTrackedFile {
-				continue
-			}
-
-			// Filter the event
-			isIgnored, err := w.fileIsIgnored(file, isDir)
+			shouldNotify, err := w.shouldNotify(file)
 			if err != nil {
-				return fmt.Errorf("error checking if file is ignored: %w", err)
+				return err
 			}
-
-			if isIgnored {
+			if !shouldNotify {
 				continue
 			}
 
@@ -141,7 +123,41 @@ func (w *Watcher) listenEvents(callback WatcherCallback) error {
 	}
 }
 
-// fileIsIgnored checks if a file is ignored by the version control system. Returns false if this feature is not enabled.
+// shouldNotify returns true if the file is tracked by the watcher and is not ignored
+func (w *Watcher) shouldNotify(file string) (bool, error) {
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+
+	// Get the file and directory
+	isDir, err := filesystem.FileIsDir(file)
+	if errors.Is(err, fs.ErrNotExist) {
+		// The file was removed or renamed, so it can not be checked anymore. Uses the tracked directories instead
+		isDir = w.dirsToWatch[file]
+	} else if err != nil {
+		return false, fmt.Errorf("error checking if '%s' is a directory: %w", file, err)
+	}
+
+	dir := file
+	if !isDir {
+		dir = filepath.Dir(file)
+	}
+
+	// Only notify if the file or directory is tracked
+	if !w.dirsToWatch[dir] && !w.filesToWatch[file] {
+		return false, nil
+	}
+
+	// Filter the event
+	isIgnored, err := w.fileIsIgnored(file, isDir)
+	if err != nil {
+		return false, fmt.Errorf("error checking if file is ignored: %w", err)
+	}
+
+	return !isIgnored, nil
+}
+
+// fileIsIgnored checks if a file is ignored by the version control system. Returns false if this feature is not enabled. The caller must
+// hold the mutex
 func (w *Watcher) fileIsIgnored(file string, isDir bool) (bool, error) {
 	if !w.opts.Vcs {
 		return false, nil
@@ -181,6 +197,9 @@ func (w *Watcher) AddFiles(files []string) error {
 
 // AddFile adds a file (or directory) to the watcher (listens for changes on it).
 func (w *Watcher) AddFile(path string) error {
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+
 	path, err := filepath.Abs(path)
 	if err != nil {
 		return fmt.Errorf("error getting absolute path of '%s': %w", path, err)
@@ -205,13 +224,7 @@ func (w *Watcher) AddFile(path string) error {
 		}
 	}
 
-	// Check if file is a directory
-	isDir, err := filesystem.FileIsDir(path)
-	if err != nil {
-		return fmt.Errorf("error checking if '%s' is a directory: %w", path, err)
-	}
-
-	err = w.addAbs(path, isDir, filter, w.opts)
+	err = w.addAbs(path, filter, w.opts)
 	if err != nil {
 		return fmt.Errorf("error adding file '%s' to watcher: %w", path, err)
 	}
@@ -219,8 +232,9 @@ func (w *Watcher) AddFile(path string) error {
 	return nil
 }
 
-// addAbs adds a file (or directory) to the watcher (listens for changes on it). Must be called with an absolute path.
-func (w *Watcher) addAbs(file string, isDir bool, filter *ignore.Filter, opts *WatcherOpts) error {
+// addAbs adds a file (or directory) to the watcher (listens for changes on it). Must be called with an absolute path. The caller must hold
+// the mutex
+func (w *Watcher) addAbs(file string, filter *ignore.Filter, opts *WatcherOpts) error {
 	// Expand wildcards
 	if opts.Wildcard {
 		files, err := filepath.Glob(file)
@@ -231,12 +245,7 @@ func (w *Watcher) addAbs(file string, isDir bool, filter *ignore.Filter, opts *W
 		opts := *opts
 		opts.Wildcard = false
 		for _, file := range files {
-			isDir, err := filesystem.FileIsDir(file)
-			if err != nil {
-				return fmt.Errorf("error checking if '%s' is a directory: %w", file, err)
-			}
-
-			err = w.addAbs(file, isDir, filter, &opts)
+			err = w.addAbs(file, filter, &opts)
 			if err != nil {
 				return fmt.Errorf("error adding file '%s' to watcher: %w", file, err)
 			}
@@ -256,7 +265,7 @@ func (w *Watcher) addAbs(file string, isDir bool, filter *ignore.Filter, opts *W
 			return fmt.Errorf("error checking if '%s' is a directory: %w", file, err)
 		}
 		if !isDir {
-			return w.addAbs(file, false, filter, &opts)
+			return w.addAbs(file, filter, &opts)
 		}
 
 		// Walk directory recursively and add sub-directories
@@ -283,7 +292,7 @@ func (w *Watcher) addAbs(file string, isDir bool, filter *ignore.Filter, opts *W
 			}
 
 			if d.IsDir() {
-				err = w.addAbs(file, true, filter, &opts)
+				err = w.addAbs(file, filter, &opts)
 				if err != nil {
 					return fmt.Errorf("error adding file '%s' to watcher: %w", file, err)
 				}
@@ -298,6 +307,11 @@ func (w *Watcher) addAbs(file string, isDir bool, filter *ignore.Filter, opts *W
 		return nil
 	}
 
+	isDir, err := filesystem.FileIsDir(file)
+	if err != nil {
+		return fmt.Errorf("error checking if file is a directory: %w", err)
+	}
+
 	// Filter
 	if filter != nil {
 		isIgnored, err := filter.IsPathIgnored(file, isDir)
@@ -310,11 +324,6 @@ func (w *Watcher) addAbs(file string, isDir bool, filter *ignore.Filter, opts *W
 	}
 
 	// Add file to watch list
-	isDir, err := filesystem.FileIsDir(file)
-	if err != nil {
-		return fmt.Errorf("error checking if file is a directory: %w", err)
-	}
-
 	if isDir {
 		w.dirsToWatch[file] = true
 	} else {
@@ -338,11 +347,13 @@ func (w *Watcher) addAbs(file string, isDir bool, filter *ignore.Filter, opts *W
 
 // Wait waits for the watcher to stop or return an error
 func (w *Watcher) Wait() error {
-	err := <-w.routineError
-	if err != nil {
-		return fmt.Errorf("error watching files: %w", err)
+	w.waitOnce.Do(func() {
+		w.waitErr = <-w.routineError
+	})
+
+	if w.waitErr != nil {
+		return fmt.Errorf("error watching files: %w", w.waitErr)
 	}
-	close(w.routineError)
 
 	return nil
 }

@@ -2,6 +2,7 @@
 package process
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -16,14 +17,18 @@ import (
 type OnExitCallback func(info *ExitInfo)
 
 // Process represents a process. Extends the `exec.Cmd` interface with support to run shell commands and gracefully stop the process
+//
+// All methods are safe for concurrent use
 type Process struct {
-	cmd *exec.Cmd
+	cmd    *exec.Cmd
+	onExit OnExitCallback
 
-	started bool
-	onExit  OnExitCallback
+	mutex    sync.Mutex // Protects the fields below
+	started  bool       // `Start` was called (or the process was stopped before starting)
+	ended    bool       // The process ended and the exit information is final
+	exitInfo ExitInfo   // Only read without the mutex after `waitGroup` is done
 
-	waitGroup sync.WaitGroup // `Wait` method
-	exitInfo  ExitInfo       // `Wait` method
+	waitGroup sync.WaitGroup // Done when the process ends (see `Wait`)
 }
 
 type Options struct {
@@ -100,8 +105,12 @@ func New(opts *Options, command string, args ...string) (*Process, error) {
 	return &p, nil
 }
 
-// Starts the process if it has not been started yet
+// Starts the process if it has not been started yet. If the process can not be started, the error is also stored in the exit information
+// (the process is considered ended)
 func (p *Process) Start() error {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
 	// Only once
 	if p.started {
 		return nil
@@ -111,52 +120,78 @@ func (p *Process) Start() error {
 	// Starts the command
 	err := p.cmd.Start()
 	if err != nil {
-		return fmt.Errorf("error starting process: %w", err)
+		err = fmt.Errorf("error starting process: %w", err)
+		p.exitInfo.Error = err
+		p.endWithoutLock()
+		return err
 	}
 
 	// Routine to wait for the process to end and get the exit code
-	// NOTE(LucasAVasco): the `waitGroup.Add` method is called in the `New` method, can not call it again
 	go func() {
-		defer p.waitGroup.Done()
-
 		err := p.cmd.Wait()
-		if err != nil && !p.Stopped() { // If we stopped the process, it will return an error. We should not display it
+
+		p.mutex.Lock()
+		if err != nil && !p.exitInfo.Stopped { // If we stopped the process, it will return an error. We should not display it
 			p.exitInfo.Error = err
 			p.exitInfo.Code = GetExitCodeFromError(err)
 		}
-
-		if p.onExit != nil {
-			p.onExit(&p.exitInfo)
-		}
+		p.endWithoutLock()
+		p.mutex.Unlock()
 	}()
 
 	return nil
 }
 
+// endWithoutLock marks the process as ended, calls the exit callback and releases the `Wait` method. The caller must hold the mutex
+func (p *Process) endWithoutLock() {
+	p.ended = true
+
+	// The callback receives a copy, so it does not race with the exit information
+	if p.onExit != nil {
+		exitInfo := p.exitInfo
+		go func() {
+			p.onExit(&exitInfo)
+			p.waitGroup.Done()
+		}()
+		return
+	}
+
+	p.waitGroup.Done() // NOTE(LucasAVasco): the `waitGroup.Add` method is called in the `New` method
+}
+
 func (p *Process) Started() bool {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
 	return p.started
 }
 
-// Wait until for the process to end.
-//
-// Return the exit code of the process and an error.
+// Wait until for the process to end. Returns the exit information of the process
 func (p *Process) Wait() (info *ExitInfo) {
 	p.waitGroup.Wait()
 
 	return &p.exitInfo
 }
 
-// Kill a process. Non-blocking operation
+// Kill a process. Non-blocking operation. If the process has not been started yet, it will never start (`Wait` returns immediately)
 //
 // The `force` parameter will force the process to be killed (send SIGKILL instead of executing a graceful shutdown)
 func (p *Process) Kill(force bool) error {
-	if p.cmd.ProcessState != nil {
-		if p.cmd.ProcessState.Exited() {
-			return nil
-		}
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
+	if p.ended {
+		return nil
 	}
 
 	p.exitInfo.Stopped = true
+
+	// Not started yet: prevents it from starting
+	if !p.started {
+		p.started = true
+		p.endWithoutLock()
+		return nil
+	}
 
 	// Kills the process
 	var err error
@@ -165,7 +200,7 @@ func (p *Process) Kill(force bool) error {
 	} else {
 		err = gracefulStop(p.cmd)
 	}
-	if err != nil {
+	if err != nil && !errors.Is(err, os.ErrProcessDone) {
 		return fmt.Errorf("error killing command: %w", err)
 	}
 
@@ -192,5 +227,8 @@ func (p *Process) Stop(force bool) (*ExitInfo, error) {
 // command in Linux). If the user calls the `Stop` method after the process has been ended (without using the `Stop` method), this method
 // will return false
 func (p *Process) Stopped() bool {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
 	return p.exitInfo.Stopped
 }

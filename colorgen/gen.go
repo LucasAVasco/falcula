@@ -1,7 +1,11 @@
 // Package colorgen generates a sequence of colors
 package colorgen
 
-import "github.com/fatih/color"
+import (
+	"sync/atomic"
+
+	"github.com/fatih/color"
+)
 
 // Default is the default color to use when no color is specified
 var Default = color.RGB(255, 255, 255)
@@ -15,17 +19,10 @@ var colors = []*color.Color{
 	color.RGB(0, 200, 200),
 }
 
-var currentColorIndex int = 0
+var nextColorIndex atomic.Uint64
 
-// Next returns the next color to use
+// Next returns the next color to use. Cycles through the available colors. Safe for concurrent use
 func Next() *color.Color {
-	colorIndex := currentColorIndex
-
-	// Next color index
-	currentColorIndex++
-	if currentColorIndex >= len(colors) {
-		currentColorIndex = 0
-	}
-
-	return colors[colorIndex]
+	index := nextColorIndex.Add(1) - 1
+	return colors[index%uint64(len(colors))]
 }
