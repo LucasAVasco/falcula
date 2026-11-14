@@ -9,13 +9,20 @@ import (
 	"github.com/rivo/tview"
 )
 
+// Names of the pages of the application
+const (
+	mainPageName      = "main"
+	argumentsPageName = "arguments"
+	helpPageName      = "help"
+)
+
 func (t *Tui) focusMainPage() {
-	t.pages.SwitchToPage("main")
+	t.pages.SwitchToPage(mainPageName)
 	t.app.SetFocus(t.mainPage.SideBar.GetPrimitive())
 }
 
 func (t *Tui) focusArgumentsPage() {
-	t.pages.SwitchToPage("arguments")
+	t.pages.SwitchToPage(argumentsPageName)
 	t.argsView.FocusAvailableArgs()
 }
 
@@ -32,17 +39,17 @@ func (t *Tui) newApp() {
 	// Help page
 	t.help = help.New(t.app)
 	t.help.OnOpen = func() {
-		t.pages.ShowPage("help")
+		t.pages.ShowPage(helpPageName)
 	}
 	t.help.OnExit = func() {
-		t.pages.HidePage("help")
+		t.pages.HidePage(helpPageName)
 	}
 
 	// Main page
 	t.mainPage = mainpage.New(t.app, t.config.Runtime.Logger.GetLogFilePath(), t.help)
 	t.mainPage.OnFocusArgs = t.focusArgumentsPage
 	t.mainPage.OnExit = t.Close
-	t.pages.AddPage("main", t.mainPage.GetPrimitive(), true, false)
+	t.pages.AddPage(mainPageName, t.mainPage.GetPrimitive(), true, false)
 
 	// Arguments page
 	t.argsView = argsview.New(t.app, t.help)
@@ -51,11 +58,11 @@ func (t *Tui) newApp() {
 		t.focusMainPage()
 		t.config.OnSelectArgs(args)
 	}
-	t.pages.AddPage("arguments", t.argsView.GetPrimitive(), true, false)
+	t.pages.AddPage(argumentsPageName, t.argsView.GetPrimitive(), true, false)
 
 	// Adds the help page to the pages
 	// NOTE(LucasAVasco): must be the last page in the list to be on top
-	t.pages.AddPage("help", t.help.GetPrimitive(), true, false)
+	t.pages.AddPage(helpPageName, t.help.GetPrimitive(), true, false)
 
 	// Initial focus
 	t.focusMainPage()

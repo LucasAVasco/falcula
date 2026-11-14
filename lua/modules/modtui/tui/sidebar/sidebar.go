@@ -132,24 +132,44 @@ func (s *Sidebar) RemoveAllManagers() {
 
 // service functions {{{
 
-// getServiceNode gets the node of a service
-func (s *Sidebar) getServiceNode(man *manager.Manager, svc *enhanced.EnhancedService) (*tview.TreeNode, error) {
-	managerNode := s.getManagerNode(man)
+// getServiceNode gets the node of a service and the node of its manager. Returns an error if the manager is not in the side bar. The
+// service node is nil if the manager node does not contain the service
+func (s *Sidebar) getServiceNode(
+	man *manager.Manager,
+	svc *enhanced.EnhancedService,
+) (managerNode *tview.TreeNode, serviceNode *tview.TreeNode, err error) {
+	managerNode = s.getManagerNode(man)
 	if managerNode == nil {
-		return nil, fmt.Errorf("manager '%s' not found", man.GetName())
+		return nil, nil, fmt.Errorf("manager '%s' not found", man.GetName())
 	}
 
 	// Gets the service from the manager node
-	service := managerNode.GetChildren()
-	index := slices.IndexFunc(service, func(child *tview.TreeNode) bool {
+	services := managerNode.GetChildren()
+	index := slices.IndexFunc(services, func(child *tview.TreeNode) bool {
 		return child.GetReference() == svc
 	})
 
 	if index == -1 {
-		return nil, nil
+		return managerNode, nil, nil
 	}
 
-	return service[index], nil
+	return managerNode, services[index], nil
+}
+
+// getExistingServiceNode is similar to `getServiceNode`, but also returns an error if the service is not in the side bar
+func (s *Sidebar) getExistingServiceNode(
+	man *manager.Manager,
+	svc *enhanced.EnhancedService,
+) (managerNode *tview.TreeNode, serviceNode *tview.TreeNode, err error) {
+	managerNode, serviceNode, err = s.getServiceNode(man, svc)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error getting node of service '%s' of manager '%s': %w", svc.GetName(), man.GetName(), err)
+	}
+	if serviceNode == nil {
+		return nil, nil, fmt.Errorf("service '%s' not found in manager '%s'", svc.GetName(), man.GetName())
+	}
+
+	return managerNode, serviceNode, nil
 }
 
 // generateServiceText gets the text to show in the service node
@@ -157,32 +177,16 @@ func (s *Sidebar) generateServiceText(svc *enhanced.EnhancedService) string {
 	return svc.GetName() + " (" + svc.GetStatus().ToString() + ")"
 }
 
-// HasService checks if the side bar contains a service
-func (s *Sidebar) HasService(man *manager.Manager, svc *enhanced.EnhancedService) (bool, error) {
-	node, err := s.getServiceNode(man, svc)
-	if err != nil {
-		return false, fmt.Errorf("error getting node of service '%s' of manager '%s': %w", svc.GetName(), man.GetName(), err)
-	}
-
-	return node != nil, nil
-}
-
 // AddService adds a service to the side bar
 func (s *Sidebar) AddService(man *manager.Manager, svc *enhanced.EnhancedService) error {
 	// Checks if the service already exists
-	serviceNode, err := s.HasService(man, svc)
+	managerNode, serviceNode, err := s.getServiceNode(man, svc)
 	if err != nil {
 		return fmt.Errorf("error checking if service exists: %w", err)
 	}
 
-	if serviceNode {
+	if serviceNode != nil {
 		return fmt.Errorf("service '%s' already exists in manager '%s'", svc.GetName(), man.GetName())
-	}
-
-	// Gets the manager node
-	managerNode := s.getManagerNode(man)
-	if managerNode == nil {
-		return fmt.Errorf("manager '%s' not found", man.GetName())
 	}
 
 	// Creates the new service node and adds it to the manager node as a child
@@ -198,17 +202,12 @@ func (s *Sidebar) AddService(man *manager.Manager, svc *enhanced.EnhancedService
 
 // RemoveService removes a service from the side bar
 func (s *Sidebar) RemoveService(man *manager.Manager, svc *enhanced.EnhancedService) error {
-	// Gets the service node
-	node, err := s.getServiceNode(man, svc)
+	managerNode, node, err := s.getExistingServiceNode(man, svc)
 	if err != nil {
-		return fmt.Errorf("error getting node of service '%s' of manager '%s': %w", svc.GetName(), man.GetName(), err)
-	}
-	if node == nil {
-		return fmt.Errorf("service '%s' not found in manager '%s'", svc.GetName(), man.GetName())
+		return err
 	}
 
 	// Removes the service node from the manager node children
-	managerNode := s.getManagerNode(man)
 	managerNode.RemoveChild(node)
 
 	// Updates the UI
@@ -219,13 +218,9 @@ func (s *Sidebar) RemoveService(man *manager.Manager, svc *enhanced.EnhancedServ
 
 // UpdateServiceStatus updates the status of a service in the side bar
 func (s *Sidebar) UpdateServiceStatus(man *manager.Manager, svc *enhanced.EnhancedService) error {
-	// Gets the service node
-	node, err := s.getServiceNode(man, svc)
+	_, node, err := s.getExistingServiceNode(man, svc)
 	if err != nil {
-		return fmt.Errorf("error getting node of service '%s' of manager '%s': %w", svc.GetName(), man.GetName(), err)
-	}
-	if node == nil {
-		return fmt.Errorf("service '%s' not found in manager '%s'", svc.GetName(), man.GetName())
+		return err
 	}
 
 	// Updates the service text
