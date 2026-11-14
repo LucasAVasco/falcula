@@ -39,3 +39,15 @@ If you want to run the script without the TUI (e.g. in a CI environment), use th
 ```sh
 falcula run-raw [arguments...]
 ```
+
+## Running tests
+
+The unit tests only need Go. The integration tests run real processes and the `falcula` CLI. They use a fake `docker` executable, so Docker is not
+required. They are behind the `integration` build tag.
+
+```sh
+go test ./...                                                # Unit tests (or `make test`)
+go test -tags integration -run '^TestIntegration' ./...      # Integration tests (or `make test-integration`)
+go test -race -tags integration ./...                        # Everything with the race detector (or `make test-all`)
+make cover                                                   # Coverage report
+```
