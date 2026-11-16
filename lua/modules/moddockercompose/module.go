@@ -93,6 +93,9 @@ var methods = map[string]lua.LGFunction{
 		provider := getProvider(L)
 		opts := dockercompose.BuildServiceOpts{}
 		err := maplua.Unmarshal(L.OptTable(2, L.NewTable()), &opts)
+		if err == nil {
+			err = base.ResolveServiceOpts(L, &opts.ServiceOpts)
+		}
 		if err != nil {
 			return luaerror.Push(L, 1, fmt.Errorf("error parsing build options: %w", err))
 		}
@@ -106,6 +109,9 @@ var methods = map[string]lua.LGFunction{
 
 		opts := dockercompose.ServiceOpts{}
 		err := maplua.Unmarshal(L.OptTable(3, L.NewTable()), &opts)
+		if err == nil {
+			err = base.ResolveServiceOpts(L, &opts)
+		}
 		if err != nil {
 			return luaerror.Push(L, 1, err)
 		}
@@ -117,6 +123,9 @@ var methods = map[string]lua.LGFunction{
 		provider := getProvider(L)
 		opts := dockercompose.DownServiceOpts{}
 		err := maplua.Unmarshal(L.OptTable(2, L.NewTable()), &opts)
+		if err == nil {
+			err = base.ResolveServiceOpts(L, &opts.ServiceOpts)
+		}
 		if err != nil {
 			return luaerror.Push(L, 1, err)
 		}
@@ -128,6 +137,9 @@ var methods = map[string]lua.LGFunction{
 		provider := getProvider(L)
 		opts := dockercompose.PushServiceOpts{}
 		err := maplua.Unmarshal(L.OptTable(2, L.NewTable()), &opts)
+		if err == nil {
+			err = base.ResolveServiceOpts(L, &opts.ServiceOpts)
+		}
 		if err != nil {
 			return luaerror.Push(L, 1, fmt.Errorf("error parsing push options: %w", err))
 		}

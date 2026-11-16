@@ -66,6 +66,14 @@ func (e *EnhancedService) GetName() string {
 	return e.svc.GetName()
 }
 
+// GetFile returns the file associated with the service. Empty if the service has no associated file (see `iface.FileOwner`)
+func (e *EnhancedService) GetFile() string {
+	if owner, ok := e.svc.(iface.FileOwner); ok {
+		return owner.GetFile()
+	}
+	return ""
+}
+
 func (e *EnhancedService) GetStatus() status.Status {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()

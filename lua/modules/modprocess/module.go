@@ -112,6 +112,9 @@ var methods = map[string]lua.LGFunction{
 		provider := getProvider(L)
 		opts := process.ServiceOpts{}
 		err := maplua.Unmarshal(L.OptTable(2, L.NewTable()), &opts)
+		if err == nil {
+			err = base.ResolveServiceOpts(L, &opts)
+		}
 		if err != nil {
 			return luaerror.Push(L, 1, err)
 		}

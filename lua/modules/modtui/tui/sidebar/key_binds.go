@@ -205,6 +205,7 @@ func (s *Sidebar) setKeyBinds() {
 		{Key: tcell.KeyEnter, Desc: "Open current node in Lnav", Bind: s.openCurrentNodeInLnav},
 		{Rune: 'l', Desc: "Open current node in Less", Bind: s.openLogFileInLessSuspended},
 		{Rune: 'L', Desc: "Open current node in Lnav", Bind: s.openCurrentNodeInLnav},
+		{Rune: 'o', Desc: "Open the file of the current node in the editor ($VISUAL or $EDITOR)", Bind: s.openCurrentNodeFiles},
 
 		// Restart
 		s.nodeActionKeyBind('r', "Restart current node", "error restarting service", restartHandlers(false)),

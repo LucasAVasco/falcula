@@ -7,6 +7,7 @@ import (
 
 	"github.com/LucasAVasco/falcula/internal/testutil"
 	"github.com/LucasAVasco/falcula/internal/testutil/testruntime"
+	"github.com/LucasAVasco/falcula/service/iface"
 
 	lua "github.com/yuin/gopher-lua"
 )
@@ -86,6 +87,40 @@ func TestProvider_InvalidArguments_RaiseErrors(t *testing.T) {
 	} {
 		if err := L.DoString(code); err == nil {
 			t.Errorf("%s: expected an error", code)
+		}
+	}
+}
+
+func TestProvider_ServiceFile_IsRelativeToTheScript(t *testing.T) {
+	dir := t.TempDir()
+	r := testruntime.New(t, nil, nil)
+	L := testutil.NewLuaState(t, map[string]testutil.ModuleLoader{"process": testruntime.Configure(r, New())})
+
+	var services []any
+	L.SetGlobal("capture", L.NewFunction(func(L *lua.LState) int {
+		services = append(services, L.CheckUserData(1).Value)
+		return 0
+	}))
+
+	script := testutil.WriteFile(t, filepath.Join(dir, "main.lua"), `
+		local process = require("process")
+		local provider = process.Provider:new("web", nil, "true")
+		capture(provider:new_service({ file = "src/main.go" }))
+		capture(provider:new_service({ file = "/abs/file" }))
+		capture(provider:new_service())
+	`)
+	if err := L.DoFile(script); err != nil {
+		t.Fatal(err)
+	}
+
+	want := []string{filepath.Join(dir, "src", "main.go"), "/abs/file", ""}
+	for i, svc := range services {
+		owner, ok := svc.(iface.FileOwner)
+		if !ok {
+			t.Fatalf("service %d (%T) does not implement iface.FileOwner", i, svc)
+		}
+		if got := owner.GetFile(); got != want[i] {
+			t.Errorf("service %d file = %q, want %q", i, got, want[i])
 		}
 	}
 }

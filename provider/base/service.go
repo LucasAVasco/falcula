@@ -13,11 +13,13 @@ type ServiceConfig struct {
 	Color       *color.Color
 	Name        string
 	Opts        iface.Opts
+	File        string // File associated with the service (absolute path). Optional
 }
 
 // ServiceOpts is a structure that holds the options for a service. It is optional
 type ServiceOpts struct {
-	StartDisabled *bool `lua:"start_disabled"`
+	StartDisabled *bool   `lua:"start_disabled"`
+	File          *string `lua:"file"` // File associated with the service (opened from the TUI). Must be an absolute path
 }
 
 // Service represents a base service with the basic data required by a service. Any service should inherit from this
@@ -35,6 +37,9 @@ func NewService(config *ServiceConfig, opts *ServiceOpts) *Service {
 		if opts.StartDisabled != nil {
 			s.Config.Opts.StartDisabled = *opts.StartDisabled
 		}
+		if opts.File != nil {
+			s.Config.File = *opts.File
+		}
 	}
 
 	return &s
@@ -42,6 +47,11 @@ func NewService(config *ServiceConfig, opts *ServiceOpts) *Service {
 
 func (s *Service) GetName() string {
 	return s.Config.Name
+}
+
+// GetFile returns the file associated with the service (`iface.FileOwner`). Empty if not set
+func (s *Service) GetFile() string {
+	return s.Config.File
 }
 
 func (s *Service) GetOpts() *iface.Opts {

@@ -27,6 +27,14 @@ func NewService(service *base.Service, info *info.DockerComposeInfo) *Service {
 	}
 }
 
+// GetFile returns the file associated with the service (`iface.FileOwner`): the `file` option or the compose file
+func (s *Service) GetFile() string {
+	if file := s.Service.GetFile(); file != "" {
+		return file
+	}
+	return s.Info.GetComposeFilePath()
+}
+
 // Prepare does nothing (most docker-compose services do not have a preparation step). Calls the callback immediately
 func (s *Service) Prepare(callback iface.OnExitCallback) (iface.Step, error) {
 	callback(&iface.ExitInfo{}, nil)

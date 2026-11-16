@@ -219,3 +219,22 @@ func TestStartDisabledOption(t *testing.T) {
 		t.Fatalf("status = %s, want Disabled", e.GetStatus())
 	}
 }
+
+// serviceWithFile is a test service with an associated file
+type serviceWithFile struct {
+	*testservice.Service
+	file string
+}
+
+func (s *serviceWithFile) GetFile() string { return s.file }
+
+func TestGetFile(t *testing.T) {
+	if got := NewEnhancedService(&testservice.Service{Name: "s"}, nil).GetFile(); got != "" {
+		t.Errorf("GetFile() of a service without a file = %q, want empty", got)
+	}
+
+	svc := &serviceWithFile{Service: &testservice.Service{Name: "s"}, file: "/compose.yaml"}
+	if got := NewEnhancedService(svc, nil).GetFile(); got != "/compose.yaml" {
+		t.Errorf("GetFile() = %q, want the file of the service", got)
+	}
+}

@@ -24,6 +24,12 @@ type Opts struct {
 	StartDisabled bool `lua:"start_disabled"` // The service will be disabled by default (it must be enabled before it can be used)
 }
 
+// FileOwner is an optional interface of a service that has an associated file (e.g. the compose file of a docker-compose service). The
+// user can open it from the text user interface
+type FileOwner interface {
+	GetFile() string // Absolute path of the file. Empty if the service has no associated file
+}
+
 // Service represents a service managed by this application. All services must implement this interface
 // NOTE(LucasAVasco): this application considers that the `Prepare` and `Start` are fast operations, they must delegate all long running
 // operations to the returned `Step`

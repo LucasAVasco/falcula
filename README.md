@@ -44,6 +44,17 @@ Falcula also runs without the TUI automatically when it can not use a terminal: 
 set), when the standard output is redirected (e.g. `falcula run task > log.txt` or `falcula run task | less`) or when the standard input
 is not a terminal.
 
+### Opening service files
+
+In the TUI, press `o` on a service to open its associated file in your editor (`$VISUAL`, `$EDITOR` or `vi`). Docker compose services
+open their compose file. Any service can set its own file with the `file` option (relative to the Lua file that creates it):
+
+```lua
+local api = process_provider:new_service({ file = "api/main.go" })
+```
+
+On a manager, `o` opens the files of all its services (each file once).
+
 ## Configuration and themes
 
 Falcula reads its user configuration from `$FALCULA_CONFIG_DIR`, or from the `falcula` folder in the user configuration folder
