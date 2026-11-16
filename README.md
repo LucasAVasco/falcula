@@ -68,6 +68,16 @@ The TUI arguments page (`a`) offers them to re-run the script with other argumen
 can read them with `require('falcula.cmd').get_available_args()`. This option replaces the removed `falcula.cmd.set_available_args()`
 function.
 
+A script can open the arguments page itself with `require('falcula.tui').show_args()`, for example to let the user choose when it runs
+without arguments (only `lua_file` tasks can run again with other arguments):
+
+```lua
+if #require('falcula.cmd').args == 0 then
+  require('falcula.tui').show_args()
+  return
+end
+```
+
 ### Shell completion
 
 `falcula run` (and `falcula task run`) completes task names, including the tasks of sub-projects (`project1:subproject2:my-task`).

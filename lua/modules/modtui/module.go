@@ -56,6 +56,14 @@ func (m *Module) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 			return 0
 		},
 
+		"show_args": func(L *lua.LState) int {
+			err := m.ShowArgsPage()
+			if err != nil {
+				return luaerror.Push(L, 0, fmt.Errorf("error showing the arguments page: %w", err))
+			}
+			return 0
+		},
+
 		"hide": func(L *lua.LState) int {
 			HideTui()
 			return 0
@@ -71,8 +79,18 @@ func (m *Module) GetTui() *tui.Tui {
 	return getTui()
 }
 
-// ShowTui shows the text user interface.
+// ShowTui shows the text user interface (does nothing in raw mode)
 func (m *Module) ShowTui() error {
+	return m.showTui(false)
+}
+
+// ShowArgsPage shows the text user interface on the arguments page (does nothing in raw mode)
+func (m *Module) ShowArgsPage() error {
+	return m.showTui(true)
+}
+
+// showTui shows the text user interface. If `argsPage` is true, opens the arguments page
+func (m *Module) showTui(argsPage bool) error {
 	// Don't show the text user interface in raw mode
 	if m.tuiConfig.RawMode {
 		return nil
@@ -90,6 +108,12 @@ func (m *Module) ShowTui() error {
 	})
 	if err != nil {
 		return fmt.Errorf("error showing text user interface: %w", err)
+	}
+
+	if argsPage {
+		if t := getTui(); t != nil {
+			t.OpenArgumentsPage()
+		}
 	}
 
 	// Shown in the debug logs of the text user interface (it uses the default theme)

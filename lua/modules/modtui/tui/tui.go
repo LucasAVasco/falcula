@@ -116,6 +116,21 @@ func (t *Tui) Show() error {
 	return nil
 }
 
+// OpenArgumentsPage switches the text user interface to the arguments page (the user selects the arguments to re-run the script). Takes
+// effect when the text user interface is visible (e.g. right after `Show`). Non-blocking
+func (t *Tui) OpenArgumentsPage() {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+
+	if t.app == nil {
+		return
+	}
+
+	// NOTE(LucasAVasco): runs in the application goroutine when the event loop runs. `QueueUpdateDraw` returns only after the update is
+	// executed, so it runs in its own goroutine (it never returns if the application fails to start)
+	go t.app.QueueUpdateDraw(t.focusArgumentsPage)
+}
+
 // Hide the text user interface. This is a non-blocking call and is idempotent
 func (t *Tui) Hide() {
 	t.mutex.Lock()

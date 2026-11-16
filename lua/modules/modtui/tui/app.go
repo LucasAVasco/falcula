@@ -119,7 +119,9 @@ func (t *Tui) newApp() {
 	t.argsView = argsview.New(t.app, t.help, t.config.Theme)
 	t.argsView.OnExit = t.focusMainPage
 	t.argsView.OnSelected = func(args []string) {
-		t.focusMainPage()
+		// NOTE(LucasAVasco): called in its own goroutine (not the application one), so the widgets are changed with an update. It does not
+		// wait for the update (it never runs if the application stops at the same time)
+		go t.app.QueueUpdateDraw(t.focusMainPage)
 		t.config.OnSelectArgs(args)
 	}
 	t.pages.AddPage(argumentsPageName, t.argsView.GetPrimitive(), true, false)
