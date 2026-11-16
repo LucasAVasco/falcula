@@ -60,7 +60,8 @@ func (p *Project) CompleteTaskArgs(taskID string, typed []string, toComplete str
 		if len(args) <= len(typed) || !slices.Equal([]string(args[:len(typed)]), typed) {
 			continue
 		}
-		if next := args[len(typed)]; strings.HasPrefix(next, toComplete) && !slices.Contains(candidates, next) {
+		// NOTE(LucasAVasco): an empty argument can not be offered (the shells ignore empty candidates)
+		if next := args[len(typed)]; next != "" && strings.HasPrefix(next, toComplete) && !slices.Contains(candidates, next) {
 			candidates = append(candidates, next)
 		}
 	}

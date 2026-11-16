@@ -14,7 +14,7 @@ type Task struct {
 	Lua       string    `yaml:"lua"`
 	ShellFile string    `yaml:"shell_file"`
 	LuaFile   string    `yaml:"lua_file"`
-	RawArgs   []any     `yaml:"args"` // Value of the `args` option (parsed to `Args` when the project is loaded)
+	RawArgs   any       `yaml:"args"` // Value of the `args` option (parsed to `Args` when the project is loaded)
 	Args      []ArgList `yaml:"-"`    // Argument sets the user can select (TUI arguments page and shell completion)
 }
 
@@ -67,12 +67,6 @@ func (t *Task) Validate() error {
 
 	if t.LuaFile != "" {
 		numActions++
-	}
-
-	for i, args := range t.Args {
-		if len(args) == 0 {
-			return fmt.Errorf("argument set %d of 'args' is empty", i+1)
-		}
 	}
 
 	if numActions == 0 {

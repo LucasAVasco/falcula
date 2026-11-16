@@ -103,7 +103,7 @@ func (a *ArgsView) GetPrimitive() tview.Primitive {
 
 // SetCurrentArgs sets the current command arguments in the view
 func (a *ArgsView) SetCurrentArgs(args []string) {
-	a.currentArgsPreview.SetText("Current arguments: " + strings.Join(args, " "))
+	a.currentArgsPreview.SetText("Current arguments: " + tview.Escape(FormatArgs(args)))
 	a.app.Draw()
 }
 
@@ -112,8 +112,7 @@ func (a *ArgsView) SetAvailableArgs(argsList [][]string) {
 	a.availableArgsTable.Clear()
 
 	for i, arg := range argsList {
-		cellText := strings.Join(arg, " ")
-		cell := tview.NewTableCell(cellText).SetReference(arg)
+		cell := tview.NewTableCell(tview.Escape(FormatArgs(arg))).SetReference(arg)
 		a.availableArgsTable.SetCell(i, 0, cell)
 	}
 
@@ -124,4 +123,22 @@ func (a *ArgsView) SetAvailableArgs(argsList [][]string) {
 func (a *ArgsView) FocusAvailableArgs() {
 	a.app.SetFocus(a.availableArgsTable)
 	a.availableArgsTable.Select(0, 0)
+}
+
+// FormatArgs formats the arguments like a shell command line: the arguments that are empty or have spaces or quotes are quoted. Returns
+// "(no arguments)" if there are no arguments
+func FormatArgs(args []string) string {
+	if len(args) == 0 {
+		return "(no arguments)"
+	}
+
+	quoted := make([]string, 0, len(args))
+	for _, arg := range args {
+		if arg == "" || strings.ContainsAny(arg, " \t\n'\"\\") {
+			arg = "'" + strings.ReplaceAll(arg, "'", `'\''`) + "'"
+		}
+		quoted = append(quoted, arg)
+	}
+
+	return strings.Join(quoted, " ")
 }

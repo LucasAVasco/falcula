@@ -24,7 +24,7 @@ tasks: { deploy: { shell: 'true' } }
 `)
 	testutil.WriteFile(t, filepath.Join(dir, "p1", "s2", "falcula.yaml"), `
 tasks:
-  my-task: { shell: 'true', args: [dev, prod --verbose, prod --quiet, [deploy, my server]] }
+  my-task: { shell: 'true', args: [dev, prod --verbose, prod --quiet, [deploy, my server], '', [deploy, ''], [empty, '', x]] }
   my-other: { shell: 'true' }
   lint: { shell: 'true' }
 `)
@@ -85,13 +85,16 @@ func TestCompleteTaskArgs(t *testing.T) {
 		toComplete string
 		want       []string
 	}{
-		{task, nil, "", []string{"deploy", "dev", "prod"}}, // "prod" only once
+		{task, nil, "", []string{"deploy", "dev", "empty", "prod"}}, // "prod" only once
 		{task, nil, "de", []string{"deploy", "dev"}},
 		{task, []string{"prod"}, "", []string{"--quiet", "--verbose"}},
 		{task, []string{"deploy"}, "my", []string{"my server"}},
-		{task, []string{"dev"}, "", nil}, // No more arguments
+		{task, []string{"deploy"}, "", []string{"my server"}}, // The empty argument is not offered
+		{task, []string{"empty", ""}, "", []string{"x"}},      // An empty argument typed with '' or ""
+		{task, []string{"dev"}, "", nil},                      // No more arguments
 		{task, []string{"other"}, "", nil},
 		{task + ".sub-task", nil, "d", []string{"deploy", "dev"}},
+		{task, nil, "e", []string{"empty"}},
 	}
 	for _, tt := range tests {
 		got, ok, err := p.CompleteTaskArgs(tt.taskID, tt.typed, tt.toComplete)

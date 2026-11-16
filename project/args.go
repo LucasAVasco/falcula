@@ -32,13 +32,32 @@ func parseArgList(value any) (ArgList, error) {
 		}
 		return args, nil
 
+	case nil: // `- ` (no value)
+		return ArgList{}, nil
+
 	default:
 		return nil, errors.New("an argument set must be a string (command line) or a list of strings")
 	}
 }
 
-// parseArgs parses the `args` option of a task (raw YAML values)
-func parseArgs(values []any) ([]ArgList, error) {
+// parseArgs parses the `args` option of a task (raw YAML value): a list of argument sets, or a single command line string. A blank string
+// (or no value) means no argument sets. An empty argument set means "no arguments"
+func parseArgs(value any) ([]ArgList, error) {
+	var values []any
+	switch v := value.(type) {
+	case nil:
+		return nil, nil
+	case string:
+		if strings.TrimSpace(v) == "" {
+			return nil, nil
+		}
+		values = []any{v}
+	case []any:
+		values = v
+	default:
+		return nil, errors.New("must be a list of argument sets or a command line string")
+	}
+
 	result := make([]ArgList, 0, len(values))
 	for i, value := range values {
 		args, err := parseArgList(value)
