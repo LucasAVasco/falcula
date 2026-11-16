@@ -48,8 +48,8 @@ func (r *Runtime) HasActiveServices() bool {
 
 // closeAllManagers closes all service managers and removes them from the runtime list. Safe for concurrent use
 func (r *Runtime) closeAllManagers() {
+	// NOTE(LucasAVasco): the available arguments are kept, they are the configuration of the task (not of the script run)
 	r.onSetScriptCurrentArgs([]string{})
-	r.onSetScriptAvailableArgs([][]string{})
 
 	// Takes the managers out of the list before closing them (closing may take a while and must not block the list)
 	r.managersMutex.Lock()

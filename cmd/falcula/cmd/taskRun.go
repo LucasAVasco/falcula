@@ -76,16 +76,27 @@ func init() {
 }
 
 // completeTaskRunArgs completes the task name (first argument) with the tasks and child projects of the current project. Only the projects
-// in the typed name are loaded. The other arguments are completed as files (they are passed to the task)
+// in the typed name are loaded. The other arguments are completed with the argument sets of the task (`args` option), or as files
 func completeTaskRunArgs(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	if len(args) > 0 {
-		return nil, cobra.ShellCompDirectiveDefault
-	}
-
 	proj, err := falcula.FindProject()
 	if err != nil {
 		cobra.CompDebugln(fmt.Sprintf("error loading project: %v", err), false)
+		if len(args) > 0 {
+			return nil, cobra.ShellCompDirectiveDefault
+		}
 		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	// Task arguments: the argument sets of the task (`args` option), or files
+	if len(args) > 0 {
+		candidates, ok, err := proj.CompleteTaskArgs(args[0], args[1:], toComplete)
+		if err != nil {
+			cobra.CompDebugln(fmt.Sprintf("error completing task arguments: %v", err), false)
+		}
+		if !ok || len(candidates) == 0 {
+			return nil, cobra.ShellCompDirectiveDefault
+		}
+		return candidates, cobra.ShellCompDirectiveNoFileComp
 	}
 
 	candidates, hasProjects, err := proj.CompleteTaskName(toComplete)

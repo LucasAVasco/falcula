@@ -2,8 +2,6 @@
 package modcmd
 
 import (
-	"fmt"
-
 	"github.com/LucasAVasco/falcula/lua/luatable"
 	"github.com/LucasAVasco/falcula/lua/modules/base"
 
@@ -41,24 +39,7 @@ func (m *Module) SetCurrentScriptArgs(args []string) {
 func (m *Module) Loader(L *lua.LState, name string, mod *lua.LTable) error {
 	L.SetField(mod, "args", m.cmdArgs)
 
-	L.SetField(mod, "set_available_args", L.NewFunction(func(L *lua.LState) int {
-		argsList := L.CheckTable(1)
-		availableCmdArgs := [][]string{}
-
-		for i := 1; i <= argsList.Len(); i++ {
-			args, ok := argsList.RawGetInt(i).(*lua.LTable)
-			if !ok {
-				L.ArgError(1, fmt.Sprintf("list of argument lists expected (element %d is not a table)", i))
-			}
-
-			availableCmdArgs = append(availableCmdArgs, luatable.GetStringsFromLuaTable(args))
-		}
-
-		m.Config.Runtime.SetScriptAvailableArgs(availableCmdArgs)
-
-		return 0
-	}))
-
+	// NOTE(LucasAVasco): the available arguments are the `args` option of the task in the project configuration file
 	L.SetField(mod, "get_available_args", L.NewFunction(func(L *lua.LState) int {
 		newTable := L.NewTable()
 

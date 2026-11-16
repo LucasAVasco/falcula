@@ -48,6 +48,26 @@ Falcula also runs without the TUI automatically when it can not use a terminal: 
 set), when the standard output is redirected (e.g. `falcula run task > log.txt` or `falcula run task | less`) or when the standard input
 is not a terminal.
 
+### Task arguments
+
+A task can declare the argument sets the user can choose from. Each entry is a list of arguments (used as is) or a string split like a
+shell command line (quotes are respected):
+
+```yaml
+tasks:
+  main:
+    lua_file: ./falcula.lua
+    args:
+      - dev                    # ["dev"]
+      - prod --verbose         # ["prod", "--verbose"]
+      - deploy "my server"     # ["deploy", "my server"]
+      - [build, "--tag=a b"]   # ["build", "--tag=a b"]
+```
+
+The TUI arguments page (`a`) offers them to re-run the script with other arguments, `falcula run main <TAB>` completes them, and Lua scripts
+can read them with `require('falcula.cmd').get_available_args()`. This option replaces the removed `falcula.cmd.set_available_args()`
+function.
+
 ### Shell completion
 
 `falcula run` (and `falcula task run`) completes task names, including the tasks of sub-projects (`project1:subproject2:my-task`).

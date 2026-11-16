@@ -48,6 +48,7 @@ func (a *App) RunTask(task *project.Task, subTask string, args ...string) error 
 	if err != nil {
 		return fmt.Errorf("error creating runtime: %w", err)
 	}
+	runtime.SetScriptAvailableArgs(task.AvailableArgs()) // Offered in the TUI to re-run the script with other arguments
 	defer func() {
 		err := runtime.Close()
 		if err != nil {

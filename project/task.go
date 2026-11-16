@@ -7,13 +7,15 @@ import (
 
 // Task is a falcula task. It can be either a shell command, a shell file, Lua code or a Lua file (can not be more than one of them)
 type Task struct {
-	Name      string   `yaml:"-"`
-	Project   *Project `yaml:"-"`
-	Cwd       string   `yaml:"cwd"`
-	Shell     Command  `yaml:"shell"`
-	Lua       string   `yaml:"lua"`
-	ShellFile string   `yaml:"shell_file"`
-	LuaFile   string   `yaml:"lua_file"`
+	Name      string    `yaml:"-"`
+	Project   *Project  `yaml:"-"`
+	Cwd       string    `yaml:"cwd"`
+	Shell     Command   `yaml:"shell"`
+	Lua       string    `yaml:"lua"`
+	ShellFile string    `yaml:"shell_file"`
+	LuaFile   string    `yaml:"lua_file"`
+	RawArgs   []any     `yaml:"args"` // Value of the `args` option (parsed to `Args` when the project is loaded)
+	Args      []ArgList `yaml:"-"`    // Argument sets the user can select (TUI arguments page and shell completion)
 }
 
 // ConvertToAbsPath converts the paths of the task to absolute paths
@@ -67,6 +69,12 @@ func (t *Task) Validate() error {
 		numActions++
 	}
 
+	for i, args := range t.Args {
+		if len(args) == 0 {
+			return fmt.Errorf("argument set %d of 'args' is empty", i+1)
+		}
+	}
+
 	if numActions == 0 {
 		return fmt.Errorf("no action defined")
 	} else if numActions > 1 {
@@ -74,4 +82,13 @@ func (t *Task) Validate() error {
 	}
 
 	return nil
+}
+
+// AvailableArgs returns the argument sets of the `args` option
+func (t *Task) AvailableArgs() [][]string {
+	available := make([][]string, 0, len(t.Args))
+	for _, args := range t.Args {
+		available = append(available, []string(args))
+	}
+	return available
 }

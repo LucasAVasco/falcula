@@ -23,7 +23,10 @@ projects: { subproject2: s2, subproject3: s3 }
 tasks: { deploy: { shell: 'true' } }
 `)
 	testutil.WriteFile(t, filepath.Join(dir, "p1", "s2", "falcula.yaml"), `
-tasks: { my-task: { shell: 'true' }, my-other: { shell: 'true' }, lint: { shell: 'true' } }
+tasks:
+  my-task: { shell: 'true', args: [dev, prod --verbose, prod --quiet, [deploy, my server]] }
+  my-other: { shell: 'true' }
+  lint: { shell: 'true' }
 `)
 	testutil.WriteFile(t, filepath.Join(dir, "p1", "s3", "falcula.yaml"), invalid)
 	testutil.WriteFile(t, filepath.Join(dir, "p2", "falcula.yaml"), invalid)
@@ -69,5 +72,39 @@ func TestCompleteTaskName_Errors(t *testing.T) {
 		if _, _, err := p.CompleteTaskName(toComplete); err == nil {
 			t.Errorf("CompleteTaskName(%q) must fail", toComplete)
 		}
+	}
+}
+
+func TestCompleteTaskArgs(t *testing.T) {
+	p := newCompletionTree(t)
+	const task = "project1:subproject2:my-task"
+
+	tests := []struct {
+		taskID     string
+		typed      []string
+		toComplete string
+		want       []string
+	}{
+		{task, nil, "", []string{"deploy", "dev", "prod"}}, // "prod" only once
+		{task, nil, "de", []string{"deploy", "dev"}},
+		{task, []string{"prod"}, "", []string{"--quiet", "--verbose"}},
+		{task, []string{"deploy"}, "my", []string{"my server"}},
+		{task, []string{"dev"}, "", nil}, // No more arguments
+		{task, []string{"other"}, "", nil},
+		{task + ".sub-task", nil, "d", []string{"deploy", "dev"}},
+	}
+	for _, tt := range tests {
+		got, ok, err := p.CompleteTaskArgs(tt.taskID, tt.typed, tt.toComplete)
+		if err != nil || !ok || !slices.Equal(got, tt.want) {
+			t.Errorf("CompleteTaskArgs(%q, %q, %q) = %q, %v, %v; want %q", tt.taskID, tt.typed, tt.toComplete, got, ok, err, tt.want)
+		}
+	}
+
+	// Task without argument sets
+	if got, ok, err := p.CompleteTaskArgs("build", nil, ""); ok || err != nil || got != nil {
+		t.Errorf("task without args = %q, %v, %v; want not ok", got, ok, err)
+	}
+	if _, _, err := p.CompleteTaskArgs("unknown", nil, ""); err == nil {
+		t.Error("an unknown task must fail")
 	}
 }

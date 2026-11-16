@@ -57,3 +57,19 @@ func TestHasActiveServices(t *testing.T) {
 		t.Fatal("a stopped service is not active")
 	}
 }
+
+func TestCloseAllManagers_KeepsTheAvailableArgs(t *testing.T) {
+	r := &Runtime{}
+	r.SetOnCurrentScriptArgsChange(func([]string) {})
+	var notified [][]string
+	r.SetOnScriptAvailableArgsChange(func(args [][]string) { notified = args })
+
+	want := [][]string{{"dev"}}
+	r.SetScriptAvailableArgs(want) // The `args` option of the task
+	r.AddManager(manager.New("m"))
+	r.closeAllManagers() // Before a re-run with other arguments
+
+	if got := r.GetScriptAvailableArgs(); len(got) != 1 || got[0][0] != "dev" || len(notified) != 1 {
+		t.Errorf("available args after closing the managers = %v (notified %v), want %v", got, notified, want)
+	}
+}

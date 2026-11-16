@@ -5,7 +5,7 @@ func (r *Runtime) GetScriptCurrentArgs() []string {
 	return r.scriptCurrentArgs
 }
 
-// SetScriptAvailableArgs sets the available arguments for the current running script
+// SetScriptAvailableArgs sets the available arguments for the current running script (the `args` option of the task)
 func (r *Runtime) SetScriptAvailableArgs(args [][]string) {
 	r.scriptAvailableArgs = args
 	r.onSetScriptAvailableArgs(args)

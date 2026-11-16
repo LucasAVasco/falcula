@@ -1,7 +1,6 @@
 package modcmd
 
 import (
-	"slices"
 	"testing"
 
 	"github.com/LucasAVasco/falcula/internal/testutil"
@@ -25,38 +24,18 @@ func TestArgs_FollowTheCurrentScriptArguments(t *testing.T) {
 	}
 }
 
-func TestAvailableArgs_AreStoredInTheRuntime(t *testing.T) {
+func TestGetAvailableArgs_ReturnsTheTaskArgs(t *testing.T) {
 	r := testruntime.New(t, nil, nil)
-	var notified [][]string
-	r.SetOnScriptAvailableArgsChange(func(args [][]string) { notified = args })
+	r.SetScriptAvailableArgs([][]string{{"dev"}, {"prod", "--verbose"}}) // The `args` option of the task
 
 	L := testutil.NewLuaState(t, map[string]testutil.ModuleLoader{"cmd": testruntime.Configure(r, New())})
 	err := L.DoString(`
 		local cmd = require("cmd")
-		cmd.set_available_args({ { "dev" }, { "prod", 2 } })
 		local args = cmd.get_available_args()
-		assert(#args == 2 and args[2][1] == "prod" and args[2][2] == "2")
+		assert(#args == 2 and args[1][1] == "dev" and args[2][1] == "prod" and args[2][2] == "--verbose")
+		assert(cmd.set_available_args == nil, "set_available_args was replaced by the 'args' option of the task")
 	`)
 	if err != nil {
 		t.Fatal(err)
-	}
-
-	want := [][]string{{"dev"}, {"prod", "2"}}
-	if !slices.EqualFunc(r.GetScriptAvailableArgs(), want, slices.Equal) || !slices.EqualFunc(notified, want, slices.Equal) {
-		t.Fatalf("available args = %v, notified = %v, want %v", r.GetScriptAvailableArgs(), notified, want)
-	}
-}
-
-func TestSetAvailableArgs_InvalidInput_RaisesArgumentError(t *testing.T) {
-	r := testruntime.New(t, nil, nil)
-	L := testutil.NewLuaState(t, map[string]testutil.ModuleLoader{"cmd": testruntime.Configure(r, New())})
-
-	for _, code := range []string{
-		`require("cmd").set_available_args("dev")`,
-		`require("cmd").set_available_args({ "dev" })`,
-	} {
-		if err := L.DoString(code); err == nil {
-			t.Errorf("%s: expected an error", code)
-		}
 	}
 }

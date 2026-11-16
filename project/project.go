@@ -95,6 +95,11 @@ func LoadProjectFile(file string) (*Project, error) {
 	for name, task := range c.Tasks {
 		task.Name = name
 		task.Project = &c
+
+		task.Args, err = parseArgs(task.RawArgs)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing 'args' of task '%s': %w", name, err)
+		}
 		err := task.ConvertToAbsPath(c.Cwd)
 		if err != nil {
 			return nil, fmt.Errorf("error converting task '%s' to absolute path: %w", name, err)

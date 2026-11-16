@@ -208,3 +208,40 @@ func TestIntegrationCLI_Completion_TaskNames(t *testing.T) {
 		}
 	}
 }
+
+func TestIntegrationCLI_TaskArgs(t *testing.T) {
+	dir := t.TempDir()
+	testutil.WriteFile(t, filepath.Join(dir, "falcula.yaml"), `
+tasks:
+  main:
+    lua: |
+      local available = require('falcula.cmd').get_available_args()
+      print('available: ' .. #available .. ' ' .. table.concat(available[3], '|'))
+    args:
+      - dev
+      - prod --verbose
+      - [deploy, my server]
+`)
+
+	out, code := runCLI(t, dir, "--raw", "run", "main")
+	if code != 0 || !strings.Contains(out, "available: 3 deploy|my server") {
+		t.Errorf("Lua task with args = %q (exit %d)", out, code)
+	}
+
+	tests := []struct {
+		args []string
+		want string // Candidates and directive, one per line
+	}{
+		{[]string{"run", "main", ""}, "deploy\ndev\nprod\n:4"},
+		{[]string{"run", "main", "prod", ""}, "--verbose\n:4"},
+		{[]string{"run", "main", "dev", ""}, ":0"}, // No more arguments: files
+	}
+	for _, tt := range tests {
+		out, code := runCLI(t, dir, append([]string{"__complete"}, tt.args...)...)
+		lines := strings.Split(strings.TrimSpace(out), "\n")
+		got := strings.Join(lines[:len(lines)-1], "\n")
+		if code != 0 || got != tt.want {
+			t.Errorf("completion of %q = %q (exit %d), want %q", tt.args, got, code, tt.want)
+		}
+	}
+}
