@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/LucasAVasco/falcula"
 	"github.com/spf13/cobra"
 )
 
@@ -37,6 +38,8 @@ falcula task run innerProject1:innerProject2:taskName arg1 arg2`,
 
 	Args: cobra.MinimumNArgs(1),
 
+	ValidArgsFunction: completeTaskRunArgs,
+
 	RunE: func(cmd *cobra.Command, args []string) error {
 		app, err := createFalculaApp(cmd)
 		if err != nil {
@@ -55,4 +58,31 @@ falcula task run innerProject1:innerProject2:taskName arg1 arg2`,
 func init() {
 	taskCmd.AddCommand(taskRunCmd)
 	rootCmd.AddCommand(taskRunCmd) // Alias to run tasks with `falcula run <task-name>`
+}
+
+// completeTaskRunArgs completes the task name (first argument) with the tasks and child projects of the current project. Only the projects
+// in the typed name are loaded. The other arguments are completed as files (they are passed to the task)
+func completeTaskRunArgs(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if len(args) > 0 {
+		return nil, cobra.ShellCompDirectiveDefault
+	}
+
+	proj, err := falcula.FindProject()
+	if err != nil {
+		cobra.CompDebugln(fmt.Sprintf("error loading project: %v", err), false)
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	candidates, hasProjects, err := proj.CompleteTaskName(toComplete)
+	if err != nil {
+		cobra.CompDebugln(fmt.Sprintf("error completing task name: %v", err), false)
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	directive := cobra.ShellCompDirectiveNoFileComp
+	if hasProjects {
+		directive |= cobra.ShellCompDirectiveNoSpace // The user continues typing the task of the project
+	}
+
+	return candidates, directive
 }

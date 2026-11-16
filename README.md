@@ -44,6 +44,19 @@ Falcula also runs without the TUI automatically when it can not use a terminal: 
 set), when the standard output is redirected (e.g. `falcula run task > log.txt` or `falcula run task | less`) or when the standard input
 is not a terminal.
 
+### Shell completion
+
+`falcula run` (and `falcula task run`) completes task names, including the tasks of sub-projects (`project1:subproject2:my-task`).
+Only the projects in the typed name are read, so completion stays fast in large project trees. Enable it in your shell:
+
+```sh
+source <(falcula completion bash)          # Bash (add to ~/.bashrc)
+source <(falcula completion zsh)           # Zsh (add to ~/.zshrc)
+falcula completion fish | source           # Fish (add to ~/.config/fish/config.fish)
+```
+
+See `falcula completion --help` for other shells and for installing the scripts permanently.
+
 ### Opening service files
 
 In the TUI, press `o` on a service to open its associated file in your editor (`$VISUAL`, `$EDITOR` or `vi`). Docker compose services

@@ -175,3 +175,32 @@ func TestIntegrationCLI_BrokenConfig_StillRuns(t *testing.T) {
 		t.Errorf("task with a broken configuration = %q (exit %d)", out, code)
 	}
 }
+
+func TestIntegrationCLI_Completion_TaskNames(t *testing.T) {
+	dir := t.TempDir()
+	testutil.WriteFile(t, filepath.Join(dir, "falcula.yaml"), "projects: { project1: p1 }\ntasks: { build: { shell: 'true' } }\n")
+	testutil.WriteFile(t, filepath.Join(dir, "p1", "falcula.yaml"),
+		"projects: { subproject2: s2, subproject3: s3 }\ntasks: { deploy: { shell: 'true' } }\n")
+	testutil.WriteFile(t, filepath.Join(dir, "p1", "s2", "falcula.yaml"), "tasks: { my-task: { shell: 'true' } }\n")
+	testutil.WriteFile(t, filepath.Join(dir, "p1", "s3", "falcula.yaml"), "tasks: [broken\n") // Must not be loaded
+
+	tests := []struct {
+		args []string
+		want string // Candidates and directive, one per line
+	}{
+		{[]string{"run", ""}, "build\nproject1:\n:6"},
+		{[]string{"task", "run", "project1:"}, "project1:deploy\nproject1:subproject2:\nproject1:subproject3:\n:6"},
+		{[]string{"run", "project1:subproject2:my-tas"}, "project1:subproject2:my-task\n:4"},
+		{[]string{"run", "unknown:"}, ":4"},
+		{[]string{"run", "build", ""}, ":0"}, // Task arguments: files
+	}
+	for _, tt := range tests {
+		out, code := runCLI(t, dir, append([]string{"__complete"}, tt.args...)...)
+		// The last line is a message for the user (in the standard error)
+		lines := strings.Split(strings.TrimSpace(out), "\n")
+		got := strings.Join(lines[:len(lines)-1], "\n")
+		if code != 0 || got != tt.want {
+			t.Errorf("completion of %q = %q (exit %d), want %q", tt.args, got, code, tt.want)
+		}
+	}
+}

@@ -35,14 +35,9 @@ func NewApp(rawMode bool) (*App, error) {
 	a.invokeDir = invokeDir
 
 	// Project
-	projectDir, err := getProjectDir(invokeDir)
+	a.project, err = loadProjectFrom(invokeDir)
 	if err != nil {
-		return nil, fmt.Errorf("error getting project file path: %w", err)
-	}
-
-	a.project, err = project.LoadProject(projectDir)
-	if err != nil {
-		return nil, fmt.Errorf("error reading project file (falcula.yaml): %w", err)
+		return nil, err
 	}
 
 	// User configuration. Errors do not prevent falcula from running
@@ -51,6 +46,32 @@ func NewApp(rawMode bool) (*App, error) {
 	}
 
 	return a, nil
+}
+
+// FindProject loads the project of the current working directory (the first project found from it to the file system root). Does not load
+// the child projects
+func FindProject() (*project.Project, error) {
+	invokeDir, err := getWorkingDir()
+	if err != nil {
+		return nil, fmt.Errorf("error getting invoke directory: %w", err)
+	}
+
+	return loadProjectFrom(invokeDir)
+}
+
+// loadProjectFrom loads the first project found from the directory to the file system root
+func loadProjectFrom(dir string) (*project.Project, error) {
+	projectDir, err := getProjectDir(dir)
+	if err != nil {
+		return nil, fmt.Errorf("error getting project file path: %w", err)
+	}
+
+	proj, err := project.LoadProject(projectDir)
+	if err != nil {
+		return nil, fmt.Errorf("error reading project file (falcula.yaml): %w", err)
+	}
+
+	return proj, nil
 }
 
 // getWorkingDir returns the absolute path of the current working directory
