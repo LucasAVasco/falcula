@@ -4,14 +4,18 @@ import (
 	"fmt"
 
 	"github.com/LucasAVasco/falcula"
+	"github.com/LucasAVasco/falcula/internal/terminal"
 	"github.com/spf13/cobra"
 )
 
 // taskRunCmd represents the taskRun command
 var taskRunCmd = &cobra.Command{
-	Use:   "run <task>[.<sub-task>]... [arguments...]",
+	Use:   "run [<task>[.<sub-task>]... [arguments...]]",
 	Short: "Run a task",
 	Long: `Run a task of the current project or specified project.
+
+Without a task, opens an interactive menu to select the task (requires an interactive terminal). Type to filter, Enter runs a task or opens
+a sub-project, Backspace goes back to the parent project and Esc quits.
 
 If the task has a sub-task, you must provide it after the task name separated by a dot. For example: "taskName.subTaskName". A subtask can
 have its own subtasks. For example: "taskName.subTaskName.subSubTaskName".
@@ -22,6 +26,8 @@ You can access inner project tasks using the following syntax for the task: "inn
 `,
 
 	Example: `
+falcula run
+
 falcula task run taskName
 
 falcula task run taskName arg1 arg2
@@ -36,7 +42,7 @@ falcula task run innerProject1:innerProject2:taskName.subTask
 
 falcula task run innerProject1:innerProject2:taskName arg1 arg2`,
 
-	Args: cobra.MinimumNArgs(1),
+	Args: cobra.ArbitraryArgs,
 
 	ValidArgsFunction: completeTaskRunArgs,
 
@@ -44,6 +50,15 @@ falcula task run innerProject1:innerProject2:taskName arg1 arg2`,
 		app, err := createFalculaApp(cmd)
 		if err != nil {
 			return fmt.Errorf("error creating falcula app: %w", err)
+		}
+
+		// Without a task, the user selects it in a menu
+		if len(args) == 0 {
+			taskId, err := selectTask(cmd, app)
+			if err != nil || taskId == "" {
+				return err // Canceled if empty
+			}
+			args = []string{taskId}
 		}
 
 		err = app.RunTaskById(args[0], args[1:]...)
@@ -85,4 +100,27 @@ func completeTaskRunArgs(cmd *cobra.Command, args []string, toComplete string) (
 	}
 
 	return candidates, directive
+}
+
+// selectTask shows the menu that selects the task to run. Returns an error if there is no interactive terminal (or in raw mode)
+func selectTask(cmd *cobra.Command, app *falcula.App) (string, error) {
+	rawMode, err := cmd.Flags().GetBool("raw")
+	if err != nil {
+		return "", fmt.Errorf("error getting value of 'raw' flag: %w", err)
+	}
+
+	reason := terminal.NonInteractiveReason()
+	if rawMode {
+		reason = "raw mode"
+	}
+	if reason != terminal.ReasonNone {
+		return "", fmt.Errorf("a task name is required (the task menu needs an interactive terminal: %s)", reason)
+	}
+
+	taskId, err := app.SelectTask()
+	if err != nil {
+		return "", fmt.Errorf("error selecting the task: %w", err)
+	}
+
+	return taskId, nil
 }

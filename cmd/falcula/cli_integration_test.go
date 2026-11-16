@@ -109,8 +109,12 @@ func TestIntegrationCLI_Errors_ExitWithNonZeroCode(t *testing.T) {
 	if out, code := runCLI(t, dir, "run", "unknown"); code == 0 || !strings.Contains(out, "task 'unknown' not found") {
 		t.Errorf("unknown task = %q (exit %d)", out, code)
 	}
-	if _, code := runCLI(t, dir, "run"); code == 0 {
-		t.Error("running without a task name must fail")
+	// Without a terminal, the task menu can not be shown
+	if out, code := runCLI(t, dir, "run"); code == 0 || !strings.Contains(out, "a task name is required") {
+		t.Errorf("running without a task name and a terminal = %q (exit %d), want an error", out, code)
+	}
+	if out, code := runCLI(t, dir, "--raw", "run"); code == 0 || !strings.Contains(out, "raw mode") {
+		t.Errorf("running without a task name in raw mode = %q (exit %d), want an error", out, code)
 	}
 
 	outside := t.TempDir()

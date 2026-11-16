@@ -34,6 +34,10 @@ falcula run [arguments...]
 
 This command will open the TUI and run the Lua script in the background with the given arguments.
 
+Without a task (`falcula run`), falcula opens a menu to select it: type to filter, Enter runs a task or opens a sub-project, Backspace goes
+back to the parent project and Esc quits. Only the sub-projects you open are read. The menu needs an interactive terminal (it is not
+available in raw mode).
+
 If you want to run the script without the TUI, use the `--raw` flag:
 
 ```sh

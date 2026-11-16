@@ -11,12 +11,19 @@ import (
 	"github.com/LucasAVasco/falcula/lua/modules/modtui"
 	"github.com/LucasAVasco/falcula/process"
 	"github.com/LucasAVasco/falcula/project"
+	"github.com/LucasAVasco/falcula/taskmenu"
 	lua "github.com/yuin/gopher-lua"
 )
 
 // GetAllTasks returns all the tasks in the current project and its children projects.
 func (a *App) GetAllTasks() (map[string]*project.Task, error) {
 	return a.project.GetAllTasks()
+}
+
+// SelectTask shows the interactive menu that selects the task to run. Returns the task identifier, or an empty string if the user canceled.
+// Requires an interactive terminal
+func (a *App) SelectTask() (string, error) {
+	return taskmenu.Run(a.project, &taskmenu.Options{Theme: a.theme})
 }
 
 // RunTaskById runs a task of the current project with the given arguments. Gets the task by its ID from the current project. The ID follows
